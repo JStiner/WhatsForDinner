@@ -1,4 +1,3 @@
-
 const STORAGE_KEYS = {
   site: 'wfd-site-config-v1',
   theme: 'wfd-theme-v1',
@@ -6,9 +5,31 @@ const STORAGE_KEYS = {
   grocery: 'wfd-grocery-v2',
   mealPlan: 'wfd-meal-plan-v1',
   sections: 'wfd-sections-v1',
+  stockDefaults: 'wfd-stock-defaults-v1',
+  stockOverrides: 'wfd-stock-overrides-v1',
 };
 
 const PAGE_SIZE = 10;
+
+const BASE_CATEGORY_DEFAULTS = {
+  spices: true,
+  sauces: true,
+  pantry: true,
+  bakery: false,
+  dairy: false,
+  meats: false,
+  veggies: false,
+  grains: false,
+};
+
+let categoryStockDefaults = {
+  ...BASE_CATEGORY_DEFAULTS,
+  ...(readJson(STORAGE_KEYS.stockDefaults, {}) || {}),
+};
+
+// per-item overrides: "always" | "never" | undefined (use category default)
+let ingredientStockOverrides = readJson(STORAGE_KEYS.stockOverrides, {}) || {};
+
 const CATEGORY_DEFS = [
   { key: 'meats', label: 'Meats', icon: '🥩', description: 'Choose proteins you have on hand.', placeholder: 'Add meat' },
   { key: 'veggies', label: 'Veggies', icon: '🥦', description: 'Track produce and fresh ingredients.', placeholder: 'Add veggie' },
@@ -19,7 +40,9 @@ const CATEGORY_DEFS = [
   { key: 'bakery', label: 'Bakery', icon: '🥖', description: 'Bread, buns, wraps, and baked basics.', placeholder: 'Add bakery item' },
   { key: 'pantry', label: 'Pantry', icon: '🥣', description: 'Shelf-stable cooking and baking staples.', placeholder: 'Add pantry item' },
 ];
+
 const CATEGORY_KEYS = CATEGORY_DEFS.map(category => category.key);
+
 const UNIT_ALIASES = {
   '': 'count',
   count: 'count',
@@ -68,7 +91,13 @@ let activeRecipeServings = 4;
 let pantryCounts = {};
 let groceryItems = [];
 let mealPlan = [];
-let sectionState = { recipes: false, shopping: false, 'meal-plan': false, ingredients: false, ...Object.fromEntries(CATEGORY_KEYS.map(key => [`ingredients-${key}`, true])) };
+let sectionState = {
+  recipes: false,
+  shopping: false,
+  'meal-plan': false,
+  ingredients: false,
+  ...Object.fromEntries(CATEGORY_KEYS.map(key => [`ingredients-${key}`, true])),
+};
 let activeRecipeFile = 'all';
 let recipeFileOptions = [];
 
@@ -120,6 +149,7 @@ function bindStaticEvents() {
   document.getElementById('save-settings-btn')?.addEventListener('click', saveSettings);
   document.getElementById('reset-settings-btn')?.addEventListener('click', resetSettings);
   document.getElementById('copy-shopping-list-btn')?.addEventListener('click', copyShoppingList);
+
   document.getElementById('clear-grocery-btn')?.addEventListener('click', () => {
     groceryItems = [];
     persistGrocery();
@@ -193,7 +223,11 @@ async function initializeApp() {
 
   recipeFileOptions = recipeFiles;
   recipes = loadedRecipes.map(recipe => normalizeRecipe(recipe)).filter(Boolean);
+
   pantryCounts = migratePantryStore(readJson(STORAGE_KEYS.pantry, {}));
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  persistPantry();
+
   groceryItems = migrateGroceryStore(readJson(STORAGE_KEYS.grocery, []));
   mealPlan = migrateMealPlanStore(readJson(STORAGE_KEYS.mealPlan, []));
   sectionState = { ...sectionState, ...(readJson(STORAGE_KEYS.sections, {}) || {}) };
@@ -218,11 +252,74 @@ async function loadIngredientCatalog() {
     }
   }));
 
-  return Object.fromEntries(entries.map(([key, items]) => [key, (Array.isArray(items) ? items : []).map(item => ({
-    id: item.id || slugify(item.name),
-    name: item.name,
-    pantryUnit: item.pantryUnit || item.unit || '',
-  }))]));
+  return Object.fromEntries(entries.map(([key, items]) => [
+    key,
+    (Array.isArray(items) ? items : []).map(item => ({
+      id: item.id || slugify(item.name),
+      name: item.name,
+      pantryUnit: item.pantryUnit || item.unit || '',
+    })),
+  ]));
+}
+
+function getIngredientDefaultStock(category, itemName) {
+  const key = normalizeIngredient(itemName);
+  const override = ingredientStockOverrides[key];
+
+  if (override === 'always') return true;
+  if (override === 'never') return false;
+
+  return Boolean(categoryStockDefaults[category]);
+}
+
+function applyStockDefaults(currentPantryCounts, ingredientsByCategory) {
+  const updated = { ...currentPantryCounts };
+
+  Object.entries(ingredientsByCategory || {}).forEach(([category, items]) => {
+    (items || []).forEach(item => {
+      const key = normalizeIngredient(item.name);
+      if (!key) return;
+
+      if (!(key in updated)) {
+        updated[key] = getIngredientDefaultStock(category, item.name) ? 1 : 0;
+      }
+    });
+  });
+
+  return updated;
+}
+
+function persistStockSettings() {
+  localStorage.setItem(STORAGE_KEYS.stockDefaults, JSON.stringify(categoryStockDefaults));
+  localStorage.setItem(STORAGE_KEYS.stockOverrides, JSON.stringify(ingredientStockOverrides));
+}
+
+function cycleIngredientStockOverride(itemName) {
+  const key = normalizeIngredient(itemName);
+  const current = ingredientStockOverrides[key];
+
+  let next;
+  if (!current) next = 'always';
+  else if (current === 'always') next = 'never';
+  else next = undefined;
+
+  if (next) ingredientStockOverrides[key] = next;
+  else delete ingredientStockOverrides[key];
+
+  persistStockSettings();
+
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  persistPantry();
+  renderAll();
+}
+
+function setCategoryStockDefault(categoryKey, isAlwaysStocked) {
+  categoryStockDefaults[categoryKey] = Boolean(isAlwaysStocked);
+  persistStockSettings();
+
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  persistPantry();
+  renderAll();
 }
 
 async function loadRecipeFiles() {
@@ -257,14 +354,13 @@ async function loadRecipeFiles() {
   }
 }
 
-
 function humanizeRecipeFileName(fileName) {
   return String(fileName || 'recipes')
     .replace(/\.json$/i, '')
     .replace(/[_-]+/g, ' ')
-    .replace(/recipes/i, '')
+    .replace(/\brecipes\b/i, '')
     .trim()
-    .replace(/\w/g, char => char.toUpperCase()) || 'Recipes';
+    .replace(/\b\w/g, char => char.toUpperCase()) || 'Recipes';
 }
 
 function populateRecipeFileFilter() {
@@ -375,7 +471,10 @@ function parseIngredientLine(line) {
   let unit = '';
   if (tokens.length) {
     const maybeUnit = normalizeUnit(tokens[0]);
-    if (maybeUnit !== 'count' || /^(small|medium|large|lb|lbs|oz|ounce|ounces|cup|cups|tbsp|tablespoons?|tsp|teaspoons?|clove|cloves|can|cans|package|packages|packet|packets|slice|slices|bunch|bunches)$/i.test(tokens[0])) {
+    if (
+      maybeUnit !== 'count'
+      || /^(small|medium|large|lb|lbs|oz|ounce|ounces|cup|cups|tbsp|tablespoons?|tsp|teaspoons?|clove|cloves|can|cans|package|packages|packet|packets|slice|slices|bunch|bunches)$/i.test(tokens[0])
+    ) {
       unit = maybeUnit;
       remainder = tokens.slice(1).join(' ').trim();
     }
@@ -393,10 +492,12 @@ function inferPantryKey(text, ingredientNames = []) {
     .map(name => ({ source: name, normalized: normalizeIngredient(name) }))
     .filter(item => item.normalized);
 
-  const siteCandidates = CATEGORY_KEYS.flatMap(category => (siteConfig.ingredients?.[category] || []).map(item => ({
-    source: item.name,
-    normalized: normalizeIngredient(item.name),
-  })));
+  const siteCandidates = CATEGORY_KEYS.flatMap(category => (
+    (siteConfig.ingredients?.[category] || []).map(item => ({
+      source: item.name,
+      normalized: normalizeIngredient(item.name),
+    }))
+  ));
 
   const allCandidates = [...recipeCandidates, ...siteCandidates];
   let best = null;
@@ -552,8 +653,8 @@ function persistMealPlan() {
 }
 
 function applyBranding() {
-  el.appTitle.textContent = siteConfig.branding.title;
-  el.appTagline.textContent = siteConfig.branding.tagline;
+  if (el.appTitle) el.appTitle.textContent = siteConfig.branding.title;
+  if (el.appTagline) el.appTagline.textContent = siteConfig.branding.tagline;
 }
 
 function applyTheme(themeId) {
@@ -705,6 +806,7 @@ function renderChipGroup(category, container) {
     btn.type = 'button';
     btn.className = `chip${qty > 0 ? ' active' : ''}`;
     btn.textContent = qty > 0 ? `${item.name} (${formatAmount(qty)}${unitHint})` : `${item.name}${unitHint}`;
+
     btn.addEventListener('click', () => {
       const nextQty = qty >= 9 ? 0 : qty + 1;
       if (nextQty === 0) delete pantryCounts[key];
@@ -713,11 +815,13 @@ function renderChipGroup(category, container) {
       currentPage = 1;
       renderAll();
     });
+
     return btn;
   };
 
   const appendGroup = (label, groupItems, extraClass = '') => {
     if (!groupItems.length) return;
+
     const group = document.createElement('div');
     group.className = `ingredient-chip-group ${extraClass}`.trim();
 
@@ -735,11 +839,13 @@ function renderChipGroup(category, container) {
   };
 
   appendGroup('Have', haveItems);
+
   if (haveItems.length && needItems.length) {
     const divider = document.createElement('div');
     divider.className = 'ingredient-chip-divider';
     container.appendChild(divider);
   }
+
   appendGroup('Need / Available', needItems, 'is-need-group');
 }
 
@@ -784,6 +890,7 @@ function renderRecipes() {
   const scoredRecipes = activeRecipeFile === 'all'
     ? allScoredRecipes
     : allScoredRecipes.filter(({ recipe }) => recipe.sourceFile === activeRecipeFile);
+
   const total = scoredRecipes.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   currentPage = Math.min(currentPage, totalPages);
@@ -791,12 +898,19 @@ function renderRecipes() {
   const activeFilterLabel = activeRecipeFile === 'all'
     ? 'All recipe files'
     : (recipeFileOptions.find(option => option.value === activeRecipeFile)?.label || 'Filtered recipes');
-  el.resultsCount.textContent = `${total} recipe${total === 1 ? '' : 's'} • ${activeFilterLabel}`;
-  const selectedCount = Object.values(pantryCounts).filter(count => count > 0).length;
-  el.matchSummary.textContent = selectedCount
-    ? `You marked ${selectedCount} ingredient${selectedCount === 1 ? '' : 's'} on hand. Cards now score by quantity coverage, not just yes or no.`
-    : 'Pick ingredients on the right to prioritize recipes and estimate what you are short for each one.';
 
+  if (el.resultsCount) {
+    el.resultsCount.textContent = `${total} recipe${total === 1 ? '' : 's'} • ${activeFilterLabel}`;
+  }
+
+  const selectedCount = Object.values(pantryCounts).filter(count => count > 0).length;
+  if (el.matchSummary) {
+    el.matchSummary.textContent = selectedCount
+      ? `You marked ${selectedCount} ingredient${selectedCount === 1 ? '' : 's'} on hand. Cards now score by quantity coverage, not just yes or no.`
+      : 'Pick ingredients on the right to prioritize recipes and estimate what you are short for each one.';
+  }
+
+  if (!el.recipeList) return;
   const pageItems = scoredRecipes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   el.recipeList.innerHTML = '';
 
@@ -868,6 +982,8 @@ function renderRecipes() {
 }
 
 function renderPagination(totalPages) {
+  if (!el.recipePagination) return;
+
   el.recipePagination.innerHTML = '';
   if (totalPages <= 1) {
     el.recipePagination.classList.remove('active');
@@ -931,6 +1047,7 @@ function openRecipeModal(recipe) {
 }
 
 function closeRecipeModal() {
+  if (!el.recipeModal) return;
   el.recipeModal.classList.add('hidden');
   el.recipeModal.setAttribute('aria-hidden', 'true');
 }
@@ -939,12 +1056,12 @@ function setRecipeModalTab(tabName) {
   document.querySelectorAll('.modal-tabs .tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
   });
-  el.tabGrocery.classList.toggle('active', tabName === 'grocery');
-  el.tabDirections.classList.toggle('active', tabName === 'directions');
+  if (el.tabGrocery) el.tabGrocery.classList.toggle('active', tabName === 'grocery');
+  if (el.tabDirections) el.tabDirections.classList.toggle('active', tabName === 'directions');
 }
 
 function renderRecipeModal() {
-  if (!activeRecipe) return;
+  if (!activeRecipe || !el.modalTitle || !el.modalMeta || !el.tabGrocery || !el.tabDirections) return;
 
   el.modalTitle.textContent = activeRecipe.name;
   el.modalMeta.innerHTML = `
@@ -1070,6 +1187,7 @@ function renderRecipeModal() {
 
     const btn = document.createElement('button');
     btn.type = 'button';
+
     const exists = itemDef.trackPantry
       ? groceryItems.some(entry => entry.kind === 'structured' && entry.recipeIds?.includes(activeRecipe.id) && entry.pantryKey === itemDef.pantryKey)
       : groceryItems.some(entry => entry.kind === 'manual' && entry.recipeIds?.includes(activeRecipe.id) && entry.text === (itemDef.display || itemDef.name));
@@ -1204,6 +1322,8 @@ function addRecipeNeededItemsToGrocery(recipe, scale = 1) {
 }
 
 function renderGroceryList() {
+  if (!el.groceryList || !el.groceryRecipeSummary) return;
+
   el.groceryList.innerHTML = '';
   const recipeNames = [...new Set(groceryItems.flatMap(item => item.recipeNames || []))];
   el.groceryRecipeSummary.textContent = groceryItems.length
@@ -1217,6 +1337,7 @@ function renderGroceryList() {
 
   const list = document.createElement('ul');
   list.className = 'shopping-list';
+
   groceryItems.forEach((item, index) => {
     const li = document.createElement('li');
     li.className = 'shopping-item';
@@ -1297,6 +1418,7 @@ function buildMealPlanShortages() {
   mealPlan.forEach(planItem => {
     const recipe = findRecipeById(planItem.recipeId);
     if (!recipe) return;
+
     const scale = (Number(planItem.servings) || recipe.servings || 4) / (recipe.servings || 4);
     planRecipes.push({ recipe, servings: Number(planItem.servings) || recipe.servings || 4 });
 
@@ -1476,12 +1598,14 @@ function addMealPlanShortagesToGrocery() {
 
 function openSettingsModal() {
   renderSettingsForm();
+  if (!el.settingsModal) return;
   el.settingsModal.classList.remove('hidden');
   el.settingsModal.setAttribute('aria-hidden', 'false');
   setSettingsTab('general');
 }
 
 function closeSettingsModal() {
+  if (!el.settingsModal) return;
   el.settingsModal.classList.add('hidden');
   el.settingsModal.setAttribute('aria-hidden', 'true');
 }
@@ -1496,21 +1620,23 @@ function setSettingsTab(tabName) {
 }
 
 function renderSettingsForm() {
-  el.titleInput.value = siteConfig.branding.title || '';
-  el.taglineInput.value = siteConfig.branding.tagline || '';
+  if (el.titleInput) el.titleInput.value = siteConfig.branding.title || '';
+  if (el.taglineInput) el.taglineInput.value = siteConfig.branding.tagline || '';
 
-  el.themeOptions.innerHTML = '';
-  (siteConfig.themes || []).forEach(theme => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `theme-btn${theme.id === currentTheme ? ' active' : ''}`;
-    btn.textContent = theme.name;
-    btn.addEventListener('click', () => {
-      applyTheme(theme.id);
-      renderSettingsForm();
+  if (el.themeOptions) {
+    el.themeOptions.innerHTML = '';
+    (siteConfig.themes || []).forEach(theme => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `theme-btn${theme.id === currentTheme ? ' active' : ''}`;
+      btn.textContent = theme.name;
+      btn.addEventListener('click', () => {
+        applyTheme(theme.id);
+        renderSettingsForm();
+      });
+      el.themeOptions.appendChild(btn);
     });
-    el.themeOptions.appendChild(btn);
-  });
+  }
 
   renderSettingsCategoryPages();
 }
@@ -1550,13 +1676,34 @@ function renderSettingsCategoryPages() {
         </div>
       </section>
     `;
-    el.settingsCategoryPages.appendChild(page);
 
+    const categoryToggle = document.createElement('label');
+    categoryToggle.className = 'settings-help';
+    categoryToggle.style.display = 'block';
+    categoryToggle.style.marginBottom = '10px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = Boolean(categoryStockDefaults[category.key]);
+    checkbox.style.marginRight = '8px';
+
+    checkbox.addEventListener('change', () => {
+      setCategoryStockDefault(category.key, checkbox.checked);
+    });
+
+    categoryToggle.appendChild(checkbox);
+    categoryToggle.append('Always stocked by default');
+
+    page.querySelector('.ingredient-admin-top')?.appendChild(categoryToggle);
+
+    el.settingsCategoryPages.appendChild(page);
     renderManageList(category.key, page.querySelector(`#manage-${category.key}`));
   });
 }
 
 function renderManageList(category, container) {
+  if (!container) return;
+
   const items = siteConfig.ingredients?.[category] || [];
   container.innerHTML = '';
 
@@ -1582,8 +1729,25 @@ function renderManageList(category, container) {
     renameBtn.addEventListener('click', () => {
       const nextName = window.prompt(`Rename ${item.name}`, item.name)?.trim();
       if (!nextName) return;
+
+      const oldKey = normalizeIngredient(item.name);
+      const newKey = normalizeIngredient(nextName);
+
       siteConfig.ingredients[category][index] = { ...item, id: slugify(nextName), name: nextName };
+
+      if (oldKey !== newKey && oldKey in pantryCounts) {
+        pantryCounts[newKey] = pantryCounts[oldKey];
+        delete pantryCounts[oldKey];
+      }
+
+      if (oldKey !== newKey && oldKey in ingredientStockOverrides) {
+        ingredientStockOverrides[newKey] = ingredientStockOverrides[oldKey];
+        delete ingredientStockOverrides[oldKey];
+        persistStockSettings();
+      }
+
       persistSiteConfig();
+      persistPantry();
       renderAll();
     });
 
@@ -1599,19 +1763,37 @@ function renderManageList(category, container) {
       renderAll();
     });
 
+    const stockBtn = document.createElement('button');
+    stockBtn.type = 'button';
+    stockBtn.className = 'ghost-btn small-btn';
+
+    const override = ingredientStockOverrides[normalizeIngredient(item.name)];
+    stockBtn.textContent =
+      override === 'always' ? 'Stock: Always'
+        : override === 'never' ? 'Stock: Off'
+          : 'Stock: Category';
+
+    stockBtn.addEventListener('click', () => {
+      cycleIngredientStockOverride(item.name);
+    });
+
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'ghost-btn small-btn';
     removeBtn.textContent = 'Remove';
     removeBtn.addEventListener('click', () => {
       const removed = siteConfig.ingredients[category].splice(index, 1)[0];
-      if (removed) delete pantryCounts[normalizeIngredient(removed.name)];
+      if (removed) {
+        delete pantryCounts[normalizeIngredient(removed.name)];
+        delete ingredientStockOverrides[normalizeIngredient(removed.name)];
+      }
       persistSiteConfig();
       persistPantry();
+      persistStockSettings();
       renderAll();
     });
 
-    actions.append(renameBtn, unitBtn, removeBtn);
+    actions.append(renameBtn, unitBtn, stockBtn, removeBtn);
     row.append(name, actions);
     container.appendChild(row);
   });
@@ -1633,15 +1815,20 @@ function addIngredient(category) {
     name: toTitleCase(value),
     pantryUnit: defaultUnitForCategory(category),
   });
+
   siteConfig.ingredients[category].sort((a, b) => a.name.localeCompare(b.name));
+
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+
   input.value = '';
   persistSiteConfig();
+  persistPantry();
   renderAll();
 }
 
 function saveSettings() {
-  siteConfig.branding.title = el.titleInput.value.trim() || 'What the !#$%&@ is for Dinner?';
-  siteConfig.branding.tagline = el.taglineInput.value.trim() || 'Tonight’s plan starts here';
+  siteConfig.branding.title = el.titleInput?.value.trim() || 'What the !#$%&@ is for Dinner?';
+  siteConfig.branding.tagline = el.taglineInput?.value.trim() || 'Tonight’s plan starts here';
   persistSiteConfig();
   applyBranding();
   renderAll();
@@ -1654,6 +1841,11 @@ function resetSettings() {
   localStorage.removeItem(STORAGE_KEYS.pantry);
   localStorage.removeItem(STORAGE_KEYS.grocery);
   localStorage.removeItem(STORAGE_KEYS.mealPlan);
+  localStorage.removeItem(STORAGE_KEYS.stockDefaults);
+  localStorage.removeItem(STORAGE_KEYS.stockOverrides);
+
+  categoryStockDefaults = { ...BASE_CATEGORY_DEFAULTS };
+  ingredientStockOverrides = {};
   pantryCounts = {};
   groceryItems = [];
   mealPlan = [];
@@ -1661,6 +1853,8 @@ function resetSettings() {
   Promise.all([fetch('data/site.json').then(r => r.json()), loadIngredientCatalog()])
     .then(([defaultConfig, ingredientCatalog]) => {
       siteConfig = buildSiteConfig(defaultConfig, null, ingredientCatalog);
+      pantryCounts = applyStockDefaults({}, siteConfig.ingredients);
+      persistPantry();
       enrichIngredientProfiles();
       applyTheme(siteConfig.defaultTheme || 'citrus');
       applyBranding();
