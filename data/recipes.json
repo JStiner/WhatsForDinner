@@ -1,4 +1,95 @@
 [
+{
+  "id": "italian-wedding-soup",
+  "name": "Italian Wedding Soup",
+  "description": "Classic Italian soup with sausage meatballs, tender pasta, and greens in a savory broth.",
+  "time": "35 min",
+  "difficulty": "Easy",
+  "servings": 6,
+  "ingredients": {
+    "meats": [
+      "italian sausage"
+    ],
+    "veggies": [
+      "onion",
+      "garlic",
+      "spinach"
+    ],
+    "grains": [
+      "pasta"
+    ]
+  },
+  "groceryList": [
+    "1 lb ground mild Italian sausage",
+    "2 tbsp olive oil (+ more for serving)",
+    "1 medium yellow onion, diced",
+    "4 cloves garlic, minced",
+    "8 cups chicken stock",
+    "1 cup small pasta (ditalini, acini de pepe, or orzo)",
+    "4 cups spinach or escarole",
+    "2 tsp kosher salt",
+    "1/2 tsp black pepper",
+    "Parmesan cheese (optional)"
+  ],
+  "directions": [
+    "Roll sausage into 1-inch meatballs.",
+    "Heat olive oil in a large pot over medium heat. Brown meatballs on all sides (about 10 minutes). Remove and set aside.",
+    "In the same pot, sauté onion until softened (about 4 minutes).",
+    "Add garlic and cook 1–2 minutes until fragrant.",
+    "Add chicken stock and bring to a boil, scraping browned bits from the bottom.",
+    "Reduce to a simmer. Add pasta and return meatballs to the pot.",
+    "Cook until pasta is just al dente (about 8 minutes), stirring occasionally.",
+    "Add spinach and cook until wilted (1–2 minutes).",
+    "Season with salt and pepper to taste.",
+    "Serve with optional olive oil drizzle and parmesan cheese."
+  ],
+  "groceryItems": [
+    {
+      "quantity": 1,
+      "unit": "lb",
+      "name": "ground mild Italian sausage"
+    },
+    {
+      "quantity": 2,
+      "unit": "tbsp",
+      "name": "olive oil"
+    },
+    {
+      "quantity": 1,
+      "unit": "medium",
+      "name": "yellow onion, diced"
+    },
+    {
+      "quantity": 4,
+      "unit": "clove",
+      "name": "garlic, minced"
+    },
+    {
+      "quantity": 8,
+      "unit": "cups",
+      "name": "chicken stock"
+    },
+    {
+      "quantity": 1,
+      "unit": "cup",
+      "name": "small pasta"
+    },
+    {
+      "quantity": 4,
+      "unit": "cups",
+      "name": "spinach or escarole"
+    },
+    {
+      "display": "2 tsp kosher salt"
+    },
+    {
+      "display": "1/2 tsp black pepper"
+    },
+    {
+      "display": "Parmesan cheese (optional)"
+    }
+  ]
+},
   {
     "id": "chicken-broccoli-rice-bowls",
     "name": "Chicken Broccoli Rice Bowls",
