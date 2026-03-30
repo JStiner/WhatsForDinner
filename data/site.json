@@ -1,0 +1,44 @@
+{
+  "branding": {
+    "title": "What the !#$%&@ is for Dinner?",
+    "tagline": "Tonight’s plan starts here"
+  },
+  "themes": [
+    { "id": "citrus", "name": "Citrus Pop" },
+    { "id": "garden", "name": "Fresh Garden" },
+    { "id": "berry", "name": "Berry Bright" },
+    { "id": "midnight", "name": "Midnight Kitchen" }
+  ],
+  "defaultTheme": "citrus",
+  "ingredients": {
+    "meats": [
+      { "id": "chicken", "name": "Chicken" },
+      { "id": "ground-beef", "name": "Ground Beef" },
+      { "id": "steak", "name": "Steak" },
+      { "id": "pork", "name": "Pork" },
+      { "id": "shrimp", "name": "Shrimp" },
+      { "id": "sausage", "name": "Sausage" },
+      { "id": "turkey", "name": "Turkey" }
+    ],
+    "veggies": [
+      { "id": "broccoli", "name": "Broccoli" },
+      { "id": "bell-pepper", "name": "Bell Pepper" },
+      { "id": "onion", "name": "Onion" },
+      { "id": "spinach", "name": "Spinach" },
+      { "id": "zucchini", "name": "Zucchini" },
+      { "id": "carrot", "name": "Carrot" },
+      { "id": "corn", "name": "Corn" },
+      { "id": "green-beans", "name": "Green Beans" },
+      { "id": "mushrooms", "name": "Mushrooms" },
+      { "id": "tomato", "name": "Tomato" }
+    ],
+    "grains": [
+      { "id": "rice", "name": "Rice" },
+      { "id": "pasta", "name": "Pasta" },
+      { "id": "tortillas", "name": "Tortillas" },
+      { "id": "quinoa", "name": "Quinoa" },
+      { "id": "potatoes", "name": "Potatoes" },
+      { "id": "bread", "name": "Bread" }
+    ]
+  }
+}

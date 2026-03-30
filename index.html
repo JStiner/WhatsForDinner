@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What the !#$%&@ is for Dinner?</title>
+  <meta name="description" content="A GitHub Pages cooking app demo for recipe discovery based on ingredients on hand." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="app-tagline">Tonight’s plan starts here</p>
+        <h1 id="app-title">What the !#$%&amp;@ is for Dinner?</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="ghost-btn" id="settings-btn" type="button">Settings</button>
+        <button class="ghost-btn" id="clear-filters-btn" type="button">Clear filters</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="recipes-panel panel">
+        <div class="panel-head sticky-head">
+          <div>
+            <p class="section-label">Recipe list</p>
+            <h2>Best matches first</h2>
+          </div>
+          <div class="results-meta">
+            <span id="results-count">0 recipes</span>
+          </div>
+        </div>
+
+        <div class="match-summary" id="match-summary">
+          Pick ingredients on the right to prioritize recipes that match what you already have.
+        </div>
+
+        <div id="recipe-list" class="recipe-list"></div>
+      </section>
+
+      <aside class="filters-panel panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">Ingredient filters</p>
+            <h2>What do you have?</h2>
+          </div>
+        </div>
+
+        <div class="chip-block-wrap">
+          <section class="chip-block">
+            <div class="chip-head">
+              <span class="chip-icon">🥩</span>
+              <div>
+                <h3>Meats</h3>
+                <p>Choose one or more proteins.</p>
+              </div>
+            </div>
+            <div id="meat-chips" class="chip-grid"></div>
+          </section>
+
+          <section class="chip-block">
+            <div class="chip-head">
+              <span class="chip-icon">🥦</span>
+              <div>
+                <h3>Veggies</h3>
+                <p>Add the produce you have on hand.</p>
+              </div>
+            </div>
+            <div id="veggie-chips" class="chip-grid"></div>
+          </section>
+
+          <section class="chip-block">
+            <div class="chip-head">
+              <span class="chip-icon">🍚</span>
+              <div>
+                <h3>Grains</h3>
+                <p>Rice, pasta, tortillas, and more.</p>
+              </div>
+            </div>
+            <div id="grain-chips" class="chip-grid"></div>
+          </section>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="recipe-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" type="button" data-close-modal="true" aria-label="Close">×</button>
+      <div class="modal-header">
+        <div>
+          <p class="section-label">Recipe details</p>
+          <h2 id="modal-title"></h2>
+        </div>
+        <div class="modal-tabs" role="tablist" aria-label="Recipe options">
+          <button class="tab-btn active" type="button" data-tab="grocery">Grocery list</button>
+          <button class="tab-btn" type="button" data-tab="directions">How to cook it</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="modal-meta" class="modal-meta"></div>
+        <section class="tab-panel active" id="tab-grocery"></section>
+        <section class="tab-panel" id="tab-directions"></section>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="settings-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-settings="true"></div>
+    <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <button class="modal-close" type="button" data-close-settings="true" aria-label="Close">×</button>
+      <div class="modal-header">
+        <div>
+          <p class="section-label">Display settings</p>
+          <h2 id="settings-title">Branding and theme</h2>
+        </div>
+      </div>
+      <div class="modal-body settings-body">
+        <label>
+          <span>App title</span>
+          <input id="title-input" type="text" maxlength="80" />
+        </label>
+        <label>
+          <span>Tag line</span>
+          <input id="tagline-input" type="text" maxlength="120" />
+        </label>
+        <div>
+          <span class="settings-label">Color theme</span>
+          <div id="theme-options" class="theme-options"></div>
+        </div>
+        <div class="settings-actions">
+          <button class="primary-btn" id="save-settings-btn" type="button">Save changes</button>
+          <button class="ghost-btn" id="reset-settings-btn" type="button">Reset defaults</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
