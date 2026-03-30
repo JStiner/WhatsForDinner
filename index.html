@@ -130,71 +130,91 @@
     <div class="modal-backdrop" data-close-settings="true"></div>
     <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <button class="modal-close" type="button" data-close-settings="true" aria-label="Close">×</button>
-      <div class="modal-header">
+      <div class="modal-header settings-header">
         <div>
           <p class="section-label">Display settings</p>
           <h2 id="settings-title">Branding, theme, and ingredients</h2>
         </div>
+        <div class="settings-nav" role="tablist" aria-label="Settings sections">
+          <button class="tab-btn settings-nav-btn active" type="button" data-settings-tab="general">General</button>
+          <button class="tab-btn settings-nav-btn" type="button" data-settings-tab="meats">Meats</button>
+          <button class="tab-btn settings-nav-btn" type="button" data-settings-tab="veggies">Veggies</button>
+          <button class="tab-btn settings-nav-btn" type="button" data-settings-tab="grains">Grains</button>
+        </div>
       </div>
       <div class="modal-body settings-body">
-        <section class="settings-section">
-          <label>
-            <span>App title</span>
-            <input id="title-input" type="text" maxlength="80" />
-          </label>
-          <label>
-            <span>Tag line</span>
-            <input id="tagline-input" type="text" maxlength="120" />
-          </label>
-          <div>
-            <span class="settings-label">Color theme</span>
-            <div id="theme-options" class="theme-options"></div>
-          </div>
+        <section class="settings-page active" data-settings-page="general">
+          <section class="settings-section">
+            <label>
+              <span>App title</span>
+              <input id="title-input" type="text" maxlength="80" />
+            </label>
+            <label>
+              <span>Tag line</span>
+              <input id="tagline-input" type="text" maxlength="120" />
+            </label>
+            <div>
+              <span class="settings-label">Color theme</span>
+              <div id="theme-options" class="theme-options"></div>
+            </div>
+          </section>
         </section>
 
-        <section class="settings-section">
-          <div class="ingredient-settings-head">
-            <div>
-              <p class="section-label">Ingredients</p>
-              <h3>Manage chip options</h3>
-            </div>
-            <p class="settings-help">Add, rename, or remove chip items for meats, veggies, and grains.</p>
-          </div>
-
-          <div class="ingredient-admin-grid">
-            <div class="ingredient-admin-card">
+        <section class="settings-page" data-settings-page="meats">
+          <section class="settings-section ingredient-page-section">
+            <div class="ingredient-admin-card single-admin-card">
               <div class="ingredient-admin-top">
-                <h4>Meats</h4>
-                <div class="inline-add-row">
-                  <input id="add-meats-input" type="text" placeholder="Add meat" maxlength="40" />
-                  <button class="primary-btn small-btn" data-add-ingredient="meats" type="button">Add</button>
+                <div>
+                  <p class="section-label">Ingredients</p>
+                  <h3>Manage meats</h3>
                 </div>
+                <p class="settings-help">Add, rename, or remove meat chip options.</p>
+              </div>
+              <div class="inline-add-row wide-add-row">
+                <input id="add-meats-input" type="text" placeholder="Add meat" maxlength="40" />
+                <button class="primary-btn small-btn" data-add-ingredient="meats" type="button">Add</button>
               </div>
               <div id="manage-meats" class="manage-list"></div>
             </div>
+          </section>
+        </section>
 
-            <div class="ingredient-admin-card">
+        <section class="settings-page" data-settings-page="veggies">
+          <section class="settings-section ingredient-page-section">
+            <div class="ingredient-admin-card single-admin-card">
               <div class="ingredient-admin-top">
-                <h4>Veggies</h4>
-                <div class="inline-add-row">
-                  <input id="add-veggies-input" type="text" placeholder="Add veggie" maxlength="40" />
-                  <button class="primary-btn small-btn" data-add-ingredient="veggies" type="button">Add</button>
+                <div>
+                  <p class="section-label">Ingredients</p>
+                  <h3>Manage veggies</h3>
                 </div>
+                <p class="settings-help">Add, rename, or remove veggie chip options.</p>
+              </div>
+              <div class="inline-add-row wide-add-row">
+                <input id="add-veggies-input" type="text" placeholder="Add veggie" maxlength="40" />
+                <button class="primary-btn small-btn" data-add-ingredient="veggies" type="button">Add</button>
               </div>
               <div id="manage-veggies" class="manage-list"></div>
             </div>
+          </section>
+        </section>
 
-            <div class="ingredient-admin-card">
+        <section class="settings-page" data-settings-page="grains">
+          <section class="settings-section ingredient-page-section">
+            <div class="ingredient-admin-card single-admin-card">
               <div class="ingredient-admin-top">
-                <h4>Grains</h4>
-                <div class="inline-add-row">
-                  <input id="add-grains-input" type="text" placeholder="Add grain" maxlength="40" />
-                  <button class="primary-btn small-btn" data-add-ingredient="grains" type="button">Add</button>
+                <div>
+                  <p class="section-label">Ingredients</p>
+                  <h3>Manage grains</h3>
                 </div>
+                <p class="settings-help">Add, rename, or remove grain chip options.</p>
+              </div>
+              <div class="inline-add-row wide-add-row">
+                <input id="add-grains-input" type="text" placeholder="Add grain" maxlength="40" />
+                <button class="primary-btn small-btn" data-add-ingredient="grains" type="button">Add</button>
               </div>
               <div id="manage-grains" class="manage-list"></div>
             </div>
-          </div>
+          </section>
         </section>
 
         <div class="settings-actions sticky-settings-actions">

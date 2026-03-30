@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'wfd-demo-settings-v2';
+const STORAGE_KEY = 'wfd-demo-settings-v3';
 
 const state = {
   defaultSite: null,
@@ -11,7 +11,8 @@ const state = {
   },
   settings: null,
   activeRecipe: null,
-  activeTab: 'grocery'
+  activeTab: 'grocery',
+  activeSettingsTab: 'general'
 };
 
 const els = {
@@ -70,7 +71,8 @@ function loadSettings(site) {
     tagline: site.branding.tagline,
     theme: site.defaultTheme,
     ingredients: structuredClone(site.ingredients),
-    grocerySelections: {}
+    recipeSelections: {},
+    manualGroceryItems: {}
   };
 
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -82,7 +84,8 @@ function loadSettings(site) {
       ...defaults,
       ...parsed,
       ingredients: mergeIngredients(defaults.ingredients, parsed.ingredients),
-      grocerySelections: parsed.grocerySelections || {}
+      recipeSelections: parsed.recipeSelections || parsed.grocerySelections || {},
+      manualGroceryItems: parsed.manualGroceryItems || {}
     };
   } catch (_) {
     return defaults;
@@ -122,10 +125,17 @@ function bindEvents() {
     node.addEventListener('click', closeSettings);
   });
 
-  document.querySelectorAll('.tab-btn').forEach((btn) => {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.activeTab = btn.dataset.tab;
       renderModalTabs();
+    });
+  });
+
+  document.querySelectorAll('.settings-nav-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.activeSettingsTab = btn.dataset.settingsTab;
+      renderSettingsTabs();
     });
   });
 
@@ -240,7 +250,7 @@ function getRankedRecipes() {
       matched,
       missing,
       score,
-      addedCount: state.settings.grocerySelections[recipe.id] || 0
+      addedCount: state.settings.recipeSelections[recipe.id] || 0
     };
   }).sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -284,7 +294,7 @@ function renderRecipes() {
       : 'Ready to cook';
 
     const addedText = recipe.addedCount > 0
-      ? `<span class="list-count-pill">List x${recipe.addedCount}</span>`
+      ? `<span class="list-count-pill">Add all x${recipe.addedCount}</span>`
       : '';
 
     card.innerHTML = `
@@ -341,23 +351,29 @@ function openRecipeModal(recipeId) {
 
   if (!state.activeRecipe) return;
 
-  const addedCount = state.settings.grocerySelections[state.activeRecipe.id] || 0;
+  const addedCount = state.settings.recipeSelections[state.activeRecipe.id] || 0;
+  const groceryItems = buildRecipeListItems(state.activeRecipe);
 
   els.modalTitle.textContent = state.activeRecipe.name;
   els.modalMeta.innerHTML = `
     <span class="meta-tag">⏱ ${escapeHtml(state.activeRecipe.time)}</span>
     <span class="meta-tag">🍽 ${state.activeRecipe.servings} servings</span>
     <span class="meta-tag">${escapeHtml(state.activeRecipe.difficulty)}</span>
-    <span class="meta-tag">Shopping list count: ${addedCount}</span>
+    <span class="meta-tag">Add all count: ${addedCount}</span>
   `;
 
   els.tabGrocery.innerHTML = `
     <div class="tab-actions-row">
-      <button class="primary-btn" id="add-recipe-to-list-btn" type="button">Add to List</button>
+      <button class="primary-btn" id="add-recipe-to-list-btn" type="button">Add all to list</button>
       <button class="ghost-btn" id="copy-recipe-grocery-btn" type="button">Copy grocery list</button>
     </div>
-    <ul class="ingredients-list">
-      ${buildRecipeListItems(state.activeRecipe).map((item) => `<li>${escapeHtml(item.display)}</li>`).join('')}
+    <ul class="ingredients-list action-ingredients-list">
+      ${groceryItems.map((item) => `
+        <li class="ingredient-action-item">
+          <span class="ingredient-line-text">${escapeHtml(item.display)}</span>
+          <button class="ghost-btn small-btn" type="button" data-add-item-key="${escapeAttribute(item.key)}">Add to list</button>
+        </li>
+      `).join('')}
     </ul>
   `;
 
@@ -374,6 +390,10 @@ function openRecipeModal(recipeId) {
   document.getElementById('copy-recipe-grocery-btn').addEventListener('click', () => copyRecipeGrocery(state.activeRecipe.id));
   document.getElementById('copy-directions-btn').addEventListener('click', () => copyRecipeDirections(state.activeRecipe.id));
 
+  els.tabGrocery.querySelectorAll('[data-add-item-key]').forEach((btn) => {
+    btn.addEventListener('click', () => addSingleIngredientToList(state.activeRecipe.id, btn.dataset.addItemKey));
+  });
+
   renderModalTabs();
   els.recipeModal.classList.remove('hidden');
   els.recipeModal.setAttribute('aria-hidden', 'false');
@@ -385,11 +405,20 @@ function closeRecipeModal() {
 }
 
 function renderModalTabs() {
-  document.querySelectorAll('.tab-btn').forEach((btn) => {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
   });
   els.tabGrocery.classList.toggle('active', state.activeTab === 'grocery');
   els.tabDirections.classList.toggle('active', state.activeTab === 'directions');
+}
+
+function renderSettingsTabs() {
+  document.querySelectorAll('.settings-nav-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.settingsTab === state.activeSettingsTab);
+  });
+  document.querySelectorAll('.settings-page').forEach((page) => {
+    page.classList.toggle('active', page.dataset.settingsPage === state.activeSettingsTab);
+  });
 }
 
 function openSettings() {
@@ -397,6 +426,7 @@ function openSettings() {
   els.taglineInput.value = state.settings.tagline;
   renderThemeOptions();
   renderIngredientManager();
+  renderSettingsTabs();
   els.settingsModal.classList.remove('hidden');
   els.settingsModal.setAttribute('aria-hidden', 'false');
 }
@@ -421,7 +451,8 @@ function resetSettings() {
     tagline: state.defaultSite.branding.tagline,
     theme: state.defaultSite.defaultTheme,
     ingredients: structuredClone(state.defaultSite.ingredients),
-    grocerySelections: {}
+    recipeSelections: {},
+    manualGroceryItems: {}
   };
 
   Object.values(state.selected).forEach((setObj) => setObj.clear());
@@ -433,6 +464,7 @@ function resetSettings() {
   els.taglineInput.value = state.settings.tagline;
   renderThemeOptions();
   renderIngredientManager();
+  renderSettingsTabs();
 }
 
 function renderIngredientManager() {
@@ -473,7 +505,7 @@ function addIngredient(groupKey) {
   if (!name) return;
 
   const existingIds = new Set(state.settings.ingredients[groupKey].map((item) => item.id));
-  let baseId = slugify(name);
+  const baseId = slugify(name);
   let nextId = baseId;
   let counter = 2;
 
@@ -500,24 +532,66 @@ function removeIngredient(groupKey, itemId) {
 }
 
 function addRecipeToList(recipeId) {
-  state.settings.grocerySelections[recipeId] = (state.settings.grocerySelections[recipeId] || 0) + 1;
+  const recipe = state.recipes.find((entry) => entry.id === recipeId);
+  if (!recipe) return;
+
+  state.settings.recipeSelections[recipeId] = (state.settings.recipeSelections[recipeId] || 0) + 1;
   saveSettings();
   renderGroceryList();
   renderRecipes();
   if (state.activeRecipe?.id === recipeId) openRecipeModal(recipeId);
 }
 
-function removeShoppingItem(itemKey) {
-  const recipeIds = Object.keys(state.settings.grocerySelections).filter((recipeId) => state.settings.grocerySelections[recipeId] > 0);
+function addSingleIngredientToList(recipeId, itemKey) {
+  const recipe = state.recipes.find((entry) => entry.id === recipeId);
+  if (!recipe) return;
 
+  const item = buildRecipeListItems(recipe).find((entry) => entry.key === itemKey);
+  if (!item) return;
+
+  const existing = state.settings.manualGroceryItems[item.key];
+  if (existing) {
+    existing.quantity = existing.quantity !== null && item.quantity !== null
+      ? existing.quantity + item.quantity
+      : existing.quantity;
+    existing.count = (existing.count || 0) + 1;
+    existing.display = buildStoredItemDisplay(existing);
+  } else {
+    state.settings.manualGroceryItems[item.key] = {
+      key: item.key,
+      name: item.name,
+      unit: item.unit,
+      note: item.note,
+      quantity: item.quantity,
+      count: 1,
+      display: item.display
+    };
+  }
+
+  saveSettings();
+  renderGroceryList();
+  if (state.activeRecipe?.id === recipeId) openRecipeModal(recipeId);
+}
+
+function buildStoredItemDisplay(item) {
+  if (item.quantity !== null) {
+    return formatIngredientDisplay(item.quantity, item.unit, item.name, item.note);
+  }
+  return item.display || item.name;
+}
+
+function removeShoppingItem(itemKey) {
+  delete state.settings.manualGroceryItems[itemKey];
+
+  const recipeIds = Object.keys(state.settings.recipeSelections).filter((recipeId) => state.settings.recipeSelections[recipeId] > 0);
   for (const recipeId of recipeIds) {
     const recipe = state.recipes.find((entry) => entry.id === recipeId);
     if (!recipe) continue;
     const itemKeys = buildRecipeListItems(recipe).map((entry) => entry.key);
     if (itemKeys.includes(itemKey)) {
-      state.settings.grocerySelections[recipeId] -= 1;
-      if (state.settings.grocerySelections[recipeId] <= 0) {
-        delete state.settings.grocerySelections[recipeId];
+      state.settings.recipeSelections[recipeId] -= 1;
+      if (state.settings.recipeSelections[recipeId] <= 0) {
+        delete state.settings.recipeSelections[recipeId];
       }
       break;
     }
@@ -530,13 +604,14 @@ function removeShoppingItem(itemKey) {
 }
 
 function clearGroceryList() {
-  const hasItems = Object.keys(state.settings.grocerySelections).some((recipeId) => state.settings.grocerySelections[recipeId] > 0);
-  if (!hasItems) return;
+  const aggregated = getGroceryAggregation();
+  if (!aggregated.items.length) return;
 
   const confirmed = window.confirm('Are you sure you want to clear the grocery list?');
   if (!confirmed) return;
 
-  state.settings.grocerySelections = {};
+  state.settings.recipeSelections = {};
+  state.settings.manualGroceryItems = {};
   saveSettings();
   renderGroceryList();
   renderRecipes();
@@ -547,7 +622,7 @@ function getGroceryAggregation() {
   const entries = new Map();
   const recipeSummary = [];
 
-  Object.entries(state.settings.grocerySelections).forEach(([recipeId, count]) => {
+  Object.entries(state.settings.recipeSelections).forEach(([recipeId, count]) => {
     if (!count) return;
     const recipe = state.recipes.find((entry) => entry.id === recipeId);
     if (!recipe) return;
@@ -579,6 +654,27 @@ function getGroceryAggregation() {
     });
   });
 
+  Object.values(state.settings.manualGroceryItems).forEach((item) => {
+    const existing = entries.get(item.key);
+    if (existing) {
+      if (existing.quantity !== null && item.quantity !== null) {
+        existing.quantity += item.quantity;
+        existing.display = formatIngredientDisplay(existing.quantity, existing.unit, existing.name, existing.note);
+      }
+      existing.recipeCount += item.count || 1;
+    } else {
+      entries.set(item.key, {
+        key: item.key,
+        name: item.name,
+        unit: item.unit,
+        note: item.note,
+        quantity: item.quantity,
+        display: buildStoredItemDisplay(item),
+        recipeCount: item.count || 1
+      });
+    }
+  });
+
   return {
     items: Array.from(entries.values()).sort((a, b) => a.name.localeCompare(b.name)),
     recipeSummary
@@ -589,10 +685,17 @@ function renderGroceryList() {
   const aggregated = getGroceryAggregation();
   const totalItems = aggregated.items.length;
   const totalRecipes = aggregated.recipeSummary.length;
+  const manualAdds = Object.values(state.settings.manualGroceryItems).reduce((sum, item) => sum + (item.count || 0), 0);
 
-  els.groceryRecipeSummary.textContent = totalItems
-    ? `${totalRecipes} recipe selection${totalRecipes === 1 ? '' : 's'} currently rolled up into ${totalItems} shopping item${totalItems === 1 ? '' : 's'}.`
-    : 'No items added yet. Open a recipe and use Add to List.';
+  if (totalItems) {
+    const recipePart = totalRecipes
+      ? `${totalRecipes} add-all recipe selection${totalRecipes === 1 ? '' : 's'}`
+      : '0 add-all recipe selections';
+    const manualPart = `${manualAdds} individual item add${manualAdds === 1 ? '' : 's'}`;
+    els.groceryRecipeSummary.textContent = `${recipePart} and ${manualPart} rolled up into ${totalItems} shopping item${totalItems === 1 ? '' : 's'}.`;
+  } else {
+    els.groceryRecipeSummary.textContent = 'No items added yet. Open a recipe and use Add all to list or the individual Add to list buttons.';
+  }
 
   if (!totalItems) {
     els.groceryList.innerHTML = '<div class="empty-state small-empty">Your grocery list is empty.</div>';
