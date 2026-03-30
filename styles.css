@@ -629,6 +629,41 @@ body.theme-midnight .single-admin-card {
 }
 
 
+
+.servings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.32);
+}
+
+.servings-select {
+  min-width: 84px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.72);
+  color: var(--text);
+  padding: 8px 10px;
+  font-weight: 700;
+}
+
+.have-it-text {
+  opacity: 0.78;
+}
+
+body.theme-midnight .servings-row {
+  background: #1b2132;
+}
+
+body.theme-midnight .servings-select {
+  background: rgba(255,255,255,0.06);
+}
+
 .ingredient-line-main {
   display: flex;
   gap: 10px;
