@@ -7,9 +7,16 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["chicken"],
-      "veggies": ["broccoli", "onion"],
-      "grains": ["rice"]
+      "meats": [
+        "chicken"
+      ],
+      "veggies": [
+        "broccoli",
+        "onion"
+      ],
+      "grains": [
+        "rice"
+      ]
     },
     "groceryList": [
       "1.5 lb chicken breast or thighs",
@@ -24,10 +31,49 @@
     ],
     "directions": [
       "Cook rice according to package directions and set aside.",
-      "Season chicken with salt and pepper, then sauté in a large skillet until browned and cooked through.",
+      "Season chicken with salt and pepper, then saut\u00e9 in a large skillet until browned and cooked through.",
       "Add onion and broccoli. Cook until the onion softens and broccoli is crisp-tender.",
       "Stir in garlic, soy sauce, honey, and sesame oil.",
       "Serve the chicken and vegetables over warm rice."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1.5,
+        "unit": "lb",
+        "name": "chicken breast or thighs"
+      },
+      {
+        "quantity": 3,
+        "unit": "cups",
+        "name": "broccoli florets"
+      },
+      {
+        "quantity": 1,
+        "unit": "small",
+        "name": "onion, sliced"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "cooked rice"
+      },
+      {
+        "quantity": 2,
+        "unit": "clove",
+        "name": "garlic"
+      },
+      {
+        "display": "3 tbsp soy sauce"
+      },
+      {
+        "display": "1 tbsp honey"
+      },
+      {
+        "display": "1 tbsp sesame oil"
+      },
+      {
+        "display": "Salt and pepper"
+      }
     ]
   },
   {
@@ -38,9 +84,17 @@
     "difficulty": "Easy",
     "servings": 5,
     "ingredients": {
-      "meats": ["ground-beef"],
-      "veggies": ["bell-pepper", "onion", "tomato"],
-      "grains": ["pasta"]
+      "meats": [
+        "ground-beef"
+      ],
+      "veggies": [
+        "bell-pepper",
+        "onion",
+        "tomato"
+      ],
+      "grains": [
+        "pasta"
+      ]
     },
     "groceryList": [
       "1 lb ground beef",
@@ -59,6 +113,47 @@
       "Add onion and bell pepper, cooking until softened.",
       "Stir in garlic, tomatoes, and seasonings, then simmer for 5 to 8 minutes.",
       "Fold in cooked pasta, adjust seasoning, and top with cheese if desired."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "ground beef"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "bell pepper, diced"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "onion, diced"
+      },
+      {
+        "quantity": 2,
+        "unit": "",
+        "name": "tomatoes, chopped or 1 can diced tomatoes"
+      },
+      {
+        "quantity": 8,
+        "unit": "oz",
+        "name": "pasta"
+      },
+      {
+        "quantity": 2,
+        "unit": "clove",
+        "name": "garlic"
+      },
+      {
+        "display": "Italian seasoning"
+      },
+      {
+        "display": "Salt and pepper"
+      },
+      {
+        "display": "Optional: shredded mozzarella or parmesan"
+      }
     ]
   },
   {
@@ -69,9 +164,17 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["shrimp"],
-      "veggies": ["carrot", "onion", "corn"],
-      "grains": ["rice"]
+      "meats": [
+        "shrimp"
+      ],
+      "veggies": [
+        "carrot",
+        "onion",
+        "corn"
+      ],
+      "grains": [
+        "rice"
+      ]
     },
     "groceryList": [
       "1 lb shrimp, peeled and deveined",
@@ -87,9 +190,50 @@
     "directions": [
       "Scramble the eggs in a large skillet and remove them to a plate.",
       "Cook shrimp until pink and just done, then set aside.",
-      "Sauté carrot, onion, and corn until tender.",
+      "Saut\u00e9 carrot, onion, and corn until tender.",
       "Add the rice, breaking up clumps, and cook until hot.",
       "Return eggs and shrimp to the pan, season with soy sauce and sesame oil, and toss to combine."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "shrimp, peeled and deveined"
+      },
+      {
+        "quantity": 3,
+        "unit": "cups",
+        "name": "cold cooked rice"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "carrot, diced"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "",
+        "name": "onion, diced"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "cup",
+        "name": "corn"
+      },
+      {
+        "quantity": 2,
+        "unit": "",
+        "name": "eggs"
+      },
+      {
+        "display": "Soy sauce"
+      },
+      {
+        "display": "Sesame oil"
+      },
+      {
+        "display": "Green onion optional"
+      }
     ]
   },
   {
@@ -100,9 +244,16 @@
     "difficulty": "Medium",
     "servings": 4,
     "ingredients": {
-      "meats": ["steak"],
-      "veggies": ["bell-pepper", "onion"],
-      "grains": ["tortillas"]
+      "meats": [
+        "steak"
+      ],
+      "veggies": [
+        "bell-pepper",
+        "onion"
+      ],
+      "grains": [
+        "tortillas"
+      ]
     },
     "groceryList": [
       "1 lb steak, thinly sliced",
@@ -120,6 +271,40 @@
       "Cook peppers and onions in the same skillet until tender with a little bite left.",
       "Return steak to the skillet and toss together briefly.",
       "Warm tortillas and serve with toppings."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "steak, thinly sliced"
+      },
+      {
+        "quantity": 2,
+        "unit": "",
+        "name": "bell peppers, sliced"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "onion, sliced"
+      },
+      {
+        "quantity": 8,
+        "unit": "",
+        "name": "tortillas"
+      },
+      {
+        "display": "Fajita seasoning"
+      },
+      {
+        "display": "Olive oil"
+      },
+      {
+        "display": "Lime optional"
+      },
+      {
+        "display": "Optional toppings: sour cream, cheese, salsa"
+      }
     ]
   },
   {
@@ -130,9 +315,17 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["sausage"],
-      "veggies": ["zucchini", "onion", "tomato"],
-      "grains": ["pasta"]
+      "meats": [
+        "sausage"
+      ],
+      "veggies": [
+        "zucchini",
+        "onion",
+        "tomato"
+      ],
+      "grains": [
+        "pasta"
+      ]
     },
     "groceryList": [
       "1 lb sausage",
@@ -150,6 +343,44 @@
       "Add garlic and tomato, simmering briefly to build a light sauce.",
       "Toss in pasta and a splash of pasta water until coated.",
       "Top with parmesan if desired."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "sausage"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "zucchini, halved and sliced"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "",
+        "name": "onion, sliced"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "name": "chopped tomato or diced canned tomato"
+      },
+      {
+        "quantity": 8,
+        "unit": "oz",
+        "name": "pasta"
+      },
+      {
+        "quantity": 2,
+        "unit": "clove",
+        "name": "garlic"
+      },
+      {
+        "display": "Red pepper flakes optional"
+      },
+      {
+        "display": "Parmesan optional"
+      }
     ]
   },
   {
@@ -160,9 +391,17 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["pork"],
-      "veggies": ["carrot", "mushrooms", "spinach"],
-      "grains": ["quinoa"]
+      "meats": [
+        "pork"
+      ],
+      "veggies": [
+        "carrot",
+        "mushrooms",
+        "spinach"
+      ],
+      "grains": [
+        "quinoa"
+      ]
     },
     "groceryList": [
       "1 lb ground pork",
@@ -180,6 +419,44 @@
       "Add carrot and mushrooms and cook until softened.",
       "Stir in spinach until wilted.",
       "Fold in cooked quinoa, season to taste, and serve hot."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "ground pork"
+      },
+      {
+        "quantity": 1,
+        "unit": "cup",
+        "name": "quinoa"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "carrot, diced"
+      },
+      {
+        "quantity": 8,
+        "unit": "oz",
+        "name": "mushrooms, sliced"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "spinach"
+      },
+      {
+        "quantity": 2,
+        "unit": "clove",
+        "name": "garlic"
+      },
+      {
+        "display": "Chicken broth or water"
+      },
+      {
+        "display": "Soy sauce or seasoning blend"
+      }
     ]
   },
   {
@@ -190,9 +467,16 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["turkey"],
-      "veggies": ["green-beans", "onion"],
-      "grains": ["potatoes"]
+      "meats": [
+        "turkey"
+      ],
+      "veggies": [
+        "green-beans",
+        "onion"
+      ],
+      "grains": [
+        "potatoes"
+      ]
     },
     "groceryList": [
       "1 lb ground turkey",
@@ -210,6 +494,40 @@
       "Stir in green beans and seasonings.",
       "Cover briefly to steam the green beans until tender.",
       "Serve once the turkey is fully cooked and the potatoes are done."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "ground turkey"
+      },
+      {
+        "quantity": 3,
+        "unit": "",
+        "name": "medium potatoes, diced small"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "green beans"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "onion, diced"
+      },
+      {
+        "display": "Garlic powder"
+      },
+      {
+        "display": "Paprika"
+      },
+      {
+        "display": "Salt and pepper"
+      },
+      {
+        "display": "Olive oil"
+      }
     ]
   },
   {
@@ -220,9 +538,16 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["chicken"],
-      "veggies": ["spinach", "onion"],
-      "grains": ["tortillas"]
+      "meats": [
+        "chicken"
+      ],
+      "veggies": [
+        "spinach",
+        "onion"
+      ],
+      "grains": [
+        "tortillas"
+      ]
     },
     "groceryList": [
       "2 cups cooked shredded chicken",
@@ -234,10 +559,43 @@
       "Optional: salsa or sour cream"
     ],
     "directions": [
-      "Sauté onion and spinach until softened.",
+      "Saut\u00e9 onion and spinach until softened.",
       "Layer chicken, vegetables, and cheese on half of each tortilla.",
       "Fold tortillas and cook in a skillet until golden on both sides.",
       "Slice and serve with salsa or sour cream."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "cooked shredded chicken"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "spinach"
+      },
+      {
+        "quantity": 0.25,
+        "unit": "",
+        "name": "onion, finely diced"
+      },
+      {
+        "quantity": 8,
+        "unit": "",
+        "name": "tortillas"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "shredded cheese"
+      },
+      {
+        "display": "Butter or oil"
+      },
+      {
+        "display": "Optional: salsa or sour cream"
+      }
     ]
   },
   {
@@ -248,9 +606,17 @@
     "difficulty": "Easy",
     "servings": 4,
     "ingredients": {
-      "meats": ["steak", "ground-beef"],
-      "veggies": ["broccoli", "onion"],
-      "grains": ["rice"]
+      "meats": [
+        "steak",
+        "ground-beef"
+      ],
+      "veggies": [
+        "broccoli",
+        "onion"
+      ],
+      "grains": [
+        "rice"
+      ]
     },
     "groceryList": [
       "1 lb steak strips or ground beef",
@@ -268,6 +634,40 @@
       "Mix soy sauce, sweetener, garlic, and ginger for a quick sauce.",
       "Return beef to the pan and toss with the sauce.",
       "Serve over warm rice."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 1,
+        "unit": "lb",
+        "name": "steak strips or ground beef"
+      },
+      {
+        "quantity": 3,
+        "unit": "cups",
+        "name": "broccoli florets"
+      },
+      {
+        "quantity": 0.5,
+        "unit": "",
+        "name": "onion"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "cooked rice"
+      },
+      {
+        "display": "Soy sauce"
+      },
+      {
+        "display": "Brown sugar or honey"
+      },
+      {
+        "display": "Cornstarch optional"
+      },
+      {
+        "display": "Garlic and ginger"
+      }
     ]
   },
   {
@@ -279,8 +679,16 @@
     "servings": 6,
     "ingredients": {
       "meats": [],
-      "veggies": ["bell-pepper", "zucchini", "onion", "spinach", "tomato"],
-      "grains": ["pasta"]
+      "veggies": [
+        "bell-pepper",
+        "zucchini",
+        "onion",
+        "spinach",
+        "tomato"
+      ],
+      "grains": [
+        "pasta"
+      ]
     },
     "groceryList": [
       "12 oz pasta",
@@ -294,10 +702,50 @@
     ],
     "directions": [
       "Cook pasta until slightly underdone.",
-      "Sauté the vegetables until softened.",
+      "Saut\u00e9 the vegetables until softened.",
       "Combine pasta, vegetables, tomato sauce, and seasoning in a baking dish.",
-      "Top with cheese and bake at 375°F until bubbling and browned.",
+      "Top with cheese and bake at 375\u00b0F until bubbling and browned.",
       "Rest for 5 minutes before serving."
+    ],
+    "groceryItems": [
+      {
+        "quantity": 12,
+        "unit": "oz",
+        "name": "pasta"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "bell pepper"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "zucchini"
+      },
+      {
+        "quantity": 1,
+        "unit": "",
+        "name": "onion"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "spinach"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "tomato sauce"
+      },
+      {
+        "quantity": 2,
+        "unit": "cups",
+        "name": "shredded cheese"
+      },
+      {
+        "display": "Italian seasoning"
+      }
     ]
   }
 ]

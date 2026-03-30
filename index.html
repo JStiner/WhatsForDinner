@@ -83,6 +83,22 @@
             </div>
             <div id="grain-chips" class="chip-grid"></div>
           </section>
+
+          <section class="chip-block grocery-block">
+            <div class="chip-head grocery-head">
+              <span class="chip-icon">🛒</span>
+              <div>
+                <h3>Grocery list</h3>
+                <p>Recipe ingredients you add will roll up here.</p>
+              </div>
+            </div>
+            <div class="grocery-actions">
+              <button class="ghost-btn small-btn" id="copy-shopping-list-btn" type="button">Copy shopping list</button>
+              <button class="ghost-btn small-btn" id="clear-grocery-btn" type="button">Clear grocery list</button>
+            </div>
+            <div id="grocery-recipe-summary" class="grocery-summary"></div>
+            <div id="grocery-list" class="grocery-list"></div>
+          </section>
         </div>
       </aside>
     </main>
@@ -117,23 +133,71 @@
       <div class="modal-header">
         <div>
           <p class="section-label">Display settings</p>
-          <h2 id="settings-title">Branding and theme</h2>
+          <h2 id="settings-title">Branding, theme, and ingredients</h2>
         </div>
       </div>
       <div class="modal-body settings-body">
-        <label>
-          <span>App title</span>
-          <input id="title-input" type="text" maxlength="80" />
-        </label>
-        <label>
-          <span>Tag line</span>
-          <input id="tagline-input" type="text" maxlength="120" />
-        </label>
-        <div>
-          <span class="settings-label">Color theme</span>
-          <div id="theme-options" class="theme-options"></div>
-        </div>
-        <div class="settings-actions">
+        <section class="settings-section">
+          <label>
+            <span>App title</span>
+            <input id="title-input" type="text" maxlength="80" />
+          </label>
+          <label>
+            <span>Tag line</span>
+            <input id="tagline-input" type="text" maxlength="120" />
+          </label>
+          <div>
+            <span class="settings-label">Color theme</span>
+            <div id="theme-options" class="theme-options"></div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="ingredient-settings-head">
+            <div>
+              <p class="section-label">Ingredients</p>
+              <h3>Manage chip options</h3>
+            </div>
+            <p class="settings-help">Add, rename, or remove chip items for meats, veggies, and grains.</p>
+          </div>
+
+          <div class="ingredient-admin-grid">
+            <div class="ingredient-admin-card">
+              <div class="ingredient-admin-top">
+                <h4>Meats</h4>
+                <div class="inline-add-row">
+                  <input id="add-meats-input" type="text" placeholder="Add meat" maxlength="40" />
+                  <button class="primary-btn small-btn" data-add-ingredient="meats" type="button">Add</button>
+                </div>
+              </div>
+              <div id="manage-meats" class="manage-list"></div>
+            </div>
+
+            <div class="ingredient-admin-card">
+              <div class="ingredient-admin-top">
+                <h4>Veggies</h4>
+                <div class="inline-add-row">
+                  <input id="add-veggies-input" type="text" placeholder="Add veggie" maxlength="40" />
+                  <button class="primary-btn small-btn" data-add-ingredient="veggies" type="button">Add</button>
+                </div>
+              </div>
+              <div id="manage-veggies" class="manage-list"></div>
+            </div>
+
+            <div class="ingredient-admin-card">
+              <div class="ingredient-admin-top">
+                <h4>Grains</h4>
+                <div class="inline-add-row">
+                  <input id="add-grains-input" type="text" placeholder="Add grain" maxlength="40" />
+                  <button class="primary-btn small-btn" data-add-ingredient="grains" type="button">Add</button>
+                </div>
+              </div>
+              <div id="manage-grains" class="manage-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="settings-actions sticky-settings-actions">
           <button class="primary-btn" id="save-settings-btn" type="button">Save changes</button>
           <button class="ghost-btn" id="reset-settings-btn" type="button">Reset defaults</button>
         </div>
