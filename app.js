@@ -339,6 +339,41 @@ function buildMetaTags(recipe) {
   return labels.map((label) => `<span class="meta-tag">${escapeHtml(label)}</span>`).join('');
 }
 
+function recipeItemIsSelected(recipe, item) {
+  const selectedIds = [
+    ...recipe.ingredients.meats.filter((id) => state.selected.meats.has(id)),
+    ...recipe.ingredients.veggies.filter((id) => state.selected.veggies.has(id)),
+    ...recipe.ingredients.grains.filter((id) => state.selected.grains.has(id))
+  ];
+
+  if (!selectedIds.length) return false;
+
+  const candidateStrings = [item.name, item.display]
+    .filter(Boolean)
+    .map((value) => normalizeIngredientText(value));
+
+  return selectedIds.some((id) => {
+    const label = [
+      lookupIngredientName('meats', id),
+      lookupIngredientName('veggies', id),
+      lookupIngredientName('grains', id)
+    ].find(Boolean) || id;
+
+    const normalizedLabel = normalizeIngredientText(label);
+    if (!normalizedLabel) return false;
+
+    return candidateStrings.some((candidate) => candidate.includes(normalizedLabel) || normalizedLabel.includes(candidate));
+  });
+}
+
+function normalizeIngredientText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 function lookupIngredientName(group, id) {
   return state.site.ingredients[group].find((item) => item.id === id)?.name
     || state.defaultSite.ingredients[group].find((item) => item.id === id)?.name
@@ -364,16 +399,23 @@ function openRecipeModal(recipeId) {
 
   els.tabGrocery.innerHTML = `
     <div class="tab-actions-row">
-      <button class="primary-btn" id="add-recipe-to-list-btn" type="button">Add all to list</button>
+      <button class="primary-btn${addedCount > 0 ? ' is-added-btn' : ''}" id="add-recipe-to-list-btn" type="button">${addedCount > 0 ? `Added all x${addedCount}` : 'Add all to list'}</button>
       <button class="ghost-btn" id="copy-recipe-grocery-btn" type="button">Copy grocery list</button>
     </div>
     <ul class="ingredients-list action-ingredients-list">
-      ${groceryItems.map((item) => `
-        <li class="ingredient-action-item">
-          <span class="ingredient-line-text">${escapeHtml(item.display)}</span>
-          <button class="ghost-btn small-btn" type="button" data-add-item-key="${escapeAttribute(item.key)}">Add to list</button>
+      ${groceryItems.map((item) => {
+        const haveIt = recipeItemIsSelected(state.activeRecipe, item);
+        const manualCount = state.settings.manualGroceryItems[item.key]?.count || 0;
+        return `
+        <li class="ingredient-action-item${haveIt ? ' have-it' : ''}">
+          <div class="ingredient-line-main">
+            <span class="ingredient-line-text">${escapeHtml(item.display)}</span>
+            ${haveIt ? '<span class="have-it-pill">Have it</span>' : ''}
+          </div>
+          <button class="ghost-btn small-btn${manualCount > 0 ? ' is-added-btn' : ''}" type="button" data-add-item-key="${escapeAttribute(item.key)}">${manualCount > 0 ? `Added x${manualCount}` : 'Add to list'}</button>
         </li>
-      `).join('')}
+      `;
+      }).join('')}
     </ul>
   `;
 
