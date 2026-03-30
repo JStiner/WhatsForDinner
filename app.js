@@ -577,7 +577,7 @@ function renderIngredientChips() {
 }
 
 function renderChipGroup(category, container) {
-  const items = siteConfig.ingredients?.[category] || [];
+  const items = [...(siteConfig.ingredients?.[category] || [])];
   container.innerHTML = '';
 
   if (!items.length) {
@@ -586,13 +586,59 @@ function renderChipGroup(category, container) {
   }
 
   const hint = document.createElement('div');
-  hint.className = 'settings-help';
+  hint.className = 'settings-help ingredient-group-hint';
   hint.textContent = 'Tap to cycle quantity. Counts should match the unit hint when possible.';
   container.appendChild(hint);
 
-  items.forEach(item => {
+  const decoratedItems = items.map(item => {
     const key = normalizeIngredient(item.name);
     const qty = pantryCounts[key] || 0;
+    return { item, key, qty };
+  }).sort((a, b) => {
+    const aHave = a.qty > 0;
+    const bHave = b.qty > 0;
+    if (aHave !== bHave) return aHave ? -1 : 1;
+    return a.item.name.localeCompare(b.item.name);
+  });
+
+  const haveItems = decoratedItems.filter(entry => entry.qty > 0);
+  const needItems = decoratedItems.filter(entry => entry.qty <= 0);
+
+  container.appendChild(buildIngredientGroup('Have', haveItems, true));
+
+  if (haveItems.length && needItems.length) {
+    const divider = document.createElement('div');
+    divider.className = 'ingredient-group-divider';
+    container.appendChild(divider);
+  }
+
+  container.appendChild(buildIngredientGroup(haveItems.length ? 'Need / Available' : 'Available', needItems, false));
+}
+
+function buildIngredientGroup(label, entries, isHaveGroup) {
+  const section = document.createElement('section');
+  section.className = 'ingredient-group';
+
+  const heading = document.createElement('div');
+  heading.className = 'ingredient-group-heading';
+  heading.innerHTML = `
+    <span class="ingredient-group-title">${escapeHtml(label)}</span>
+    <span class="ingredient-group-count">${entries.length}</span>
+  `;
+  section.appendChild(heading);
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state small-empty ingredient-group-empty';
+    empty.textContent = isHaveGroup ? 'Nothing marked on hand yet.' : 'No remaining ingredients in this section.';
+    section.appendChild(empty);
+    return section;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'chip-grid ingredient-chip-grid';
+
+  entries.forEach(({ item, key, qty }) => {
     const unitHint = item.pantryUnit ? ` • ${item.pantryUnit}` : '';
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -606,8 +652,11 @@ function renderChipGroup(category, container) {
       currentPage = 1;
       renderAll();
     });
-    container.appendChild(btn);
+    grid.appendChild(btn);
   });
+
+  section.appendChild(grid);
+  return section;
 }
 
 function getScoredRecipes() {
