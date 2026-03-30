@@ -715,3 +715,184 @@ body.theme-midnight .is-added-btn {
   border-color: rgba(255, 127, 102, 0.42);
   color: var(--text);
 }
+
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.pagination-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 22px 22px;
+}
+
+.pagination-bar.active {
+  display: flex;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.page-btn {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+
+@media (max-width: 720px) {
+  body {
+    font-size: 17px;
+  }
+
+  h1 {
+    font-size: clamp(1.65rem, 6vw, 2.1rem);
+    line-height: 1.08;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  h3 {
+    font-size: 1.08rem;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    gap: 14px;
+  }
+
+  .filters-panel {
+    order: -1;
+  }
+
+  .recipes-panel,
+  .filters-panel,
+  .panel,
+  .recipe-card,
+  .chip-block,
+  .shopping-item,
+  .ingredient-action-item,
+  .servings-row {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .recipe-list {
+    max-height: none;
+    overflow: visible;
+    gap: 14px;
+  }
+
+  .recipe-card {
+    padding: 18px;
+  }
+
+  .recipe-title-row h3 {
+    font-size: 1.18rem;
+  }
+
+  .recipe-desc,
+  .shopping-text,
+  .ingredient-line-text,
+  .chip-head p,
+  .ingredient-admin-top p,
+  .match-summary,
+  .grocery-summary,
+  .directions-list li,
+  .ingredients-list li {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .chip {
+    min-height: 44px;
+    font-size: 0.98rem;
+    padding: 10px 14px;
+  }
+
+  .ghost-btn,
+  .primary-btn,
+  .recipe-btn,
+  .page-btn,
+  .tab-btn,
+  .servings-select {
+    min-height: 44px;
+    font-size: 0.98rem;
+  }
+
+  .topbar-actions,
+  .grocery-actions,
+  .pagination-bar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .pagination-pages {
+    grid-column: 1 / -1;
+  }
+
+  .pagination-bar .ghost-btn,
+  .topbar-actions .ghost-btn,
+  .grocery-actions .ghost-btn {
+    width: 100%;
+  }
+
+  .badge,
+  .score-pill,
+  .missing-pill,
+  .list-count-pill,
+  .meta-tag {
+    font-size: 0.82rem;
+    padding: 7px 11px;
+  }
+
+  .panel-head,
+  .recipe-list,
+  .match-summary,
+  .pagination-bar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .panel-head {
+    padding-top: 16px;
+  }
+
+  .chip-block-wrap {
+    padding: 0 14px 14px;
+    gap: 12px;
+  }
+
+  .modal-card {
+    width: min(100vw - 16px, 100%);
+    max-height: calc(100vh - 16px);
+    margin: 8px auto;
+    padding: 16px;
+    border-radius: 18px;
+  }
+}

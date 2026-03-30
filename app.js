@@ -13,7 +13,9 @@ const state = {
   settings: null,
   activeRecipe: null,
   activeTab: 'grocery',
-  activeSettingsTab: 'general'
+  activeSettingsTab: 'general',
+  currentRecipePage: 1,
+  recipesPerPage: 10
 };
 
 const els = {
@@ -38,7 +40,8 @@ const els = {
   themeOptions: document.getElementById('theme-options'),
   manageMeats: document.getElementById('manage-meats'),
   manageVeggies: document.getElementById('manage-veggies'),
-  manageGrains: document.getElementById('manage-grains')
+  manageGrains: document.getElementById('manage-grains'),
+  recipePagination: document.getElementById('recipe-pagination')
 };
 
 init();
@@ -223,10 +226,12 @@ function toggleSelection(groupKey, itemId) {
   } else {
     bucket.add(itemId);
   }
+  state.currentRecipePage = 1;
 }
 
 function clearFilters() {
   Object.values(state.selected).forEach((setObj) => setObj.clear());
+  state.currentRecipePage = 1;
   renderChips();
   renderRecipes();
 }
@@ -280,8 +285,21 @@ function getRankedRecipes() {
 
 function renderRecipes() {
   const ranked = getRankedRecipes();
+  const totalRecipes = ranked.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecipes / state.recipesPerPage));
+
+  if (state.currentRecipePage > totalPages) state.currentRecipePage = totalPages;
+  if (state.currentRecipePage < 1) state.currentRecipePage = 1;
+
+  const startIndex = (state.currentRecipePage - 1) * state.recipesPerPage;
+  const visibleRecipes = ranked.slice(startIndex, startIndex + state.recipesPerPage);
+
   els.recipeList.innerHTML = '';
-  els.resultsCount.textContent = `${ranked.length} recipes`;
+  const rangeStart = totalRecipes ? startIndex + 1 : 0;
+  const rangeEnd = Math.min(startIndex + state.recipesPerPage, totalRecipes);
+  els.resultsCount.textContent = totalRecipes
+    ? `${rangeStart}-${rangeEnd} of ${totalRecipes} recipes`
+    : '0 recipes';
 
   const selectedCount = [...state.selected.meats, ...state.selected.veggies, ...state.selected.grains].length;
 
@@ -295,12 +313,13 @@ function renderRecipes() {
       : `Prioritized using ${selectedCount} selected ingredient${selectedCount === 1 ? '' : 's'}. Top recipes match the most items you already have.`;
   }
 
-  if (!ranked.length) {
+  if (!totalRecipes) {
     els.recipeList.innerHTML = '<div class="empty-state">No recipes found.</div>';
+    renderRecipePagination(0, 0);
     return;
   }
 
-  ranked.forEach((recipe) => {
+  visibleRecipes.forEach((recipe) => {
     const card = document.createElement('article');
     card.className = 'recipe-card';
 
@@ -346,6 +365,53 @@ function renderRecipes() {
     card.addEventListener('dblclick', () => openRecipeModal(recipe.id));
     els.recipeList.appendChild(card);
   });
+
+  renderRecipePagination(totalPages, totalRecipes);
+}
+
+function renderRecipePagination(totalPages, totalRecipes) {
+  if (!els.recipePagination) return;
+
+  if (!totalRecipes || totalPages <= 1) {
+    els.recipePagination.innerHTML = '';
+    els.recipePagination.classList.remove('active');
+    return;
+  }
+
+  els.recipePagination.classList.add('active');
+  const page = state.currentRecipePage;
+  const startPage = Math.max(1, page - 1);
+  const endPage = Math.min(totalPages, startPage + 2);
+  const adjustedStart = Math.max(1, endPage - 2);
+  const pages = [];
+  for (let i = adjustedStart; i <= endPage; i += 1) pages.push(i);
+
+  els.recipePagination.innerHTML = `
+    <button class="ghost-btn small-btn" type="button" data-page-action="prev" ${page === 1 ? 'disabled' : ''}>Previous</button>
+    <div class="pagination-pages">
+      ${pages.map((pageNumber) => `
+        <button class="page-btn${pageNumber === page ? ' active' : ''}" type="button" data-page-number="${pageNumber}">${pageNumber}</button>
+      `).join('')}
+    </div>
+    <button class="ghost-btn small-btn" type="button" data-page-action="next" ${page === totalPages ? 'disabled' : ''}>Next</button>
+  `;
+
+  els.recipePagination.querySelectorAll('[data-page-action="prev"]').forEach((btn) => {
+    btn.addEventListener('click', () => changeRecipePage(page - 1, totalPages));
+  });
+  els.recipePagination.querySelectorAll('[data-page-action="next"]').forEach((btn) => {
+    btn.addEventListener('click', () => changeRecipePage(page + 1, totalPages));
+  });
+  els.recipePagination.querySelectorAll('[data-page-number]').forEach((btn) => {
+    btn.addEventListener('click', () => changeRecipePage(Number(btn.dataset.pageNumber), totalPages));
+  });
+}
+
+function changeRecipePage(nextPage, totalPages) {
+  state.currentRecipePage = Math.min(Math.max(nextPage, 1), totalPages || 1);
+  renderRecipes();
+  const recipePanel = document.querySelector('.recipes-panel');
+  recipePanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function buildMetaTags(recipe) {
