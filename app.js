@@ -9,7 +9,17 @@ const STORAGE_KEYS = {
 };
 
 const PAGE_SIZE = 10;
-const CATEGORY_KEYS = ['meats', 'veggies', 'grains'];
+const CATEGORY_DEFS = [
+  { key: 'meats', label: 'Meats', icon: '🥩', description: 'Choose proteins you have on hand.', placeholder: 'Add meat' },
+  { key: 'veggies', label: 'Veggies', icon: '🥦', description: 'Track produce and fresh ingredients.', placeholder: 'Add veggie' },
+  { key: 'grains', label: 'Grains', icon: '🍚', description: 'Rice, pasta, tortillas, and similar staples.', placeholder: 'Add grain' },
+  { key: 'dairy', label: 'Dairy', icon: '🧀', description: 'Milk, cheese, butter, and fridge staples.', placeholder: 'Add dairy item' },
+  { key: 'spices', label: 'Spices', icon: '🧂', description: 'Seasonings, rubs, and dry spices.', placeholder: 'Add spice' },
+  { key: 'sauces', label: 'Sauces', icon: '🥫', description: 'Condiments, sauces, and dressings.', placeholder: 'Add sauce' },
+  { key: 'bakery', label: 'Bakery', icon: '🥖', description: 'Bread, buns, wraps, and baked basics.', placeholder: 'Add bakery item' },
+  { key: 'pantry', label: 'Pantry', icon: '🥣', description: 'Shelf-stable cooking and baking staples.', placeholder: 'Add pantry item' },
+];
+const CATEGORY_KEYS = CATEGORY_DEFS.map(category => category.key);
 const UNIT_ALIASES = {
   '': 'count',
   count: 'count',
@@ -58,7 +68,7 @@ let activeRecipeServings = 4;
 let pantryCounts = {};
 let groceryItems = [];
 let mealPlan = [];
-let sectionState = { recipes: false, shopping: false, 'meal-plan': false, ingredients: false };
+let sectionState = { recipes: false, shopping: false, 'meal-plan': false, ingredients: false, ...Object.fromEntries(CATEGORY_KEYS.map(key => [`ingredients-${key}`, true])) };
 let activeRecipeFile = 'all';
 let recipeFileOptions = [];
 
@@ -78,9 +88,7 @@ function cacheElements() {
   el.matchSummary = document.getElementById('match-summary');
   el.recipePagination = document.getElementById('recipe-pagination');
   el.recipeFileFilter = document.getElementById('recipe-file-filter');
-  el.meatChips = document.getElementById('meat-chips');
-  el.veggieChips = document.getElementById('veggie-chips');
-  el.grainChips = document.getElementById('grain-chips');
+  el.ingredientCategories = document.getElementById('ingredient-categories');
   el.groceryList = document.getElementById('grocery-list');
   el.groceryRecipeSummary = document.getElementById('grocery-recipe-summary');
   el.mealPlanSummary = document.getElementById('meal-plan-summary');
@@ -95,9 +103,8 @@ function cacheElements() {
   el.themeOptions = document.getElementById('theme-options');
   el.titleInput = document.getElementById('title-input');
   el.taglineInput = document.getElementById('tagline-input');
-  el.manageMeats = document.getElementById('manage-meats');
-  el.manageVeggies = document.getElementById('manage-veggies');
-  el.manageGrains = document.getElementById('manage-grains');
+  el.settingsNav = document.getElementById('settings-nav-dynamic');
+  el.settingsCategoryPages = document.getElementById('settings-category-pages');
 }
 
 function bindStaticEvents() {
@@ -150,11 +157,24 @@ function bindStaticEvents() {
     btn.addEventListener('click', () => toggleSection(btn.dataset.toggleSection));
   });
 
-  document.querySelectorAll('[data-add-ingredient]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const category = btn.dataset.addIngredient;
-      addIngredient(category);
-    });
+  document.addEventListener('click', (event) => {
+    const settingsBtn = event.target.closest('.settings-nav-btn');
+    if (settingsBtn) {
+      setSettingsTab(settingsBtn.dataset.settingsTab);
+      return;
+    }
+
+    const addBtn = event.target.closest('[data-add-ingredient]');
+    if (addBtn) {
+      addIngredient(addBtn.dataset.addIngredient);
+      return;
+    }
+
+    const ingredientToggle = event.target.closest('[data-toggle-ingredient-category]');
+    if (ingredientToggle) {
+      toggleSection(`ingredients-${ingredientToggle.dataset.toggleIngredientCategory}`);
+      return;
+    }
   });
 
   document.addEventListener('keydown', (event) => {
@@ -167,7 +187,8 @@ function bindStaticEvents() {
 
 async function initializeApp() {
   const siteResponse = await fetch('data/site.json').then(r => r.json());
-  siteConfig = buildSiteConfig(siteResponse, readStoredSiteConfig());
+  const ingredientCatalog = await loadIngredientCatalog();
+  siteConfig = buildSiteConfig(siteResponse, readStoredSiteConfig(), ingredientCatalog);
   const { loadedRecipes, recipeFiles } = await loadRecipeFiles();
 
   recipeFileOptions = recipeFiles;
@@ -183,6 +204,25 @@ async function initializeApp() {
   applyTheme(currentTheme);
   populateRecipeFileFilter();
   renderAll();
+}
+
+async function loadIngredientCatalog() {
+  const entries = await Promise.all(CATEGORY_DEFS.map(async (category) => {
+    try {
+      const response = await fetch(`data/ingredients/${category.key}.json`);
+      if (!response.ok) throw new Error('missing ingredient file');
+      const items = await response.json();
+      return [category.key, items];
+    } catch {
+      return [category.key, []];
+    }
+  }));
+
+  return Object.fromEntries(entries.map(([key, items]) => [key, (Array.isArray(items) ? items : []).map(item => ({
+    id: item.id || slugify(item.name),
+    name: item.name,
+    pantryUnit: item.pantryUnit || item.unit || '',
+  }))]));
 }
 
 async function loadRecipeFiles() {
@@ -411,30 +451,34 @@ function defaultUnitForCategory(category) {
   if (category === 'meats') return 'lb';
   if (category === 'veggies') return 'count';
   if (category === 'grains') return 'cup';
+  if (category === 'dairy') return 'cup';
+  if (category === 'spices') return 'tsp';
+  if (category === 'sauces') return 'tbsp';
+  if (category === 'bakery') return 'count';
+  if (category === 'pantry') return 'count';
   return 'count';
 }
 
-function buildSiteConfig(defaults, stored) {
+function buildSiteConfig(defaults, stored, ingredientCatalog = {}) {
   const merged = structuredClone(defaults);
-  if (!stored) return merged;
+  merged.ingredients = {};
 
-  if (stored.branding) {
+  if (stored?.branding) {
     merged.branding.title = stored.branding.title || merged.branding.title;
     merged.branding.tagline = stored.branding.tagline || merged.branding.tagline;
   }
 
   CATEGORY_KEYS.forEach(category => {
-    const defaultList = Array.isArray(defaults.ingredients?.[category]) ? defaults.ingredients[category] : [];
-    const storedList = Array.isArray(stored.ingredients?.[category]) ? stored.ingredients[category] : null;
-    if (storedList) {
-      merged.ingredients[category] = storedList.map(item => ({
-        id: item.id || slugify(item.name),
-        name: item.name,
-        pantryUnit: item.pantryUnit || item.unit || '',
-      }));
-    } else {
-      merged.ingredients[category] = defaultList;
-    }
+    const defaultList = Array.isArray(ingredientCatalog?.[category])
+      ? ingredientCatalog[category]
+      : (Array.isArray(defaults.ingredients?.[category]) ? defaults.ingredients[category] : []);
+    const storedList = Array.isArray(stored?.ingredients?.[category]) ? stored.ingredients[category] : null;
+
+    merged.ingredients[category] = (storedList || defaultList).map(item => ({
+      id: item.id || slugify(item.name),
+      name: item.name,
+      pantryUnit: item.pantryUnit || item.unit || '',
+    }));
   });
 
   return merged;
@@ -568,16 +612,67 @@ function renderSectionState() {
     btn.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${sectionLabel}`);
     btn.setAttribute('title', `${collapsed ? 'Expand' : 'Collapse'} ${sectionLabel}`);
   });
+
+  document.querySelectorAll('[data-ingredient-category]').forEach(section => {
+    const categoryKey = section.dataset.ingredientCategory;
+    const collapsed = Boolean(sectionState[`ingredients-${categoryKey}`]);
+    section.classList.toggle('collapsed', collapsed);
+    section.classList.toggle('expanded', !collapsed);
+  });
+
+  document.querySelectorAll('[data-toggle-ingredient-category]').forEach(btn => {
+    const categoryKey = btn.dataset.toggleIngredientCategory;
+    const collapsed = Boolean(sectionState[`ingredients-${categoryKey}`]);
+    const categoryLabel = CATEGORY_DEFS.find(item => item.key === categoryKey)?.label || categoryKey;
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${categoryLabel}`);
+    btn.setAttribute('title', `${collapsed ? 'Expand' : 'Collapse'} ${categoryLabel}`);
+  });
 }
 
 function renderIngredientChips() {
-  renderChipGroup('meats', el.meatChips);
-  renderChipGroup('veggies', el.veggieChips);
-  renderChipGroup('grains', el.grainChips);
+  if (!el.ingredientCategories) return;
+  el.ingredientCategories.innerHTML = '';
+
+  CATEGORY_DEFS.forEach(category => {
+    const section = document.createElement('section');
+    const sectionKey = `ingredients-${category.key}`;
+    const collapsed = Boolean(sectionState[sectionKey]);
+    section.className = `chip-block nested-chip-block ingredient-category-section${collapsed ? ' collapsed' : ' expanded'}`;
+    section.dataset.ingredientCategory = category.key;
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ingredient-category-toggle';
+    toggle.dataset.toggleIngredientCategory = category.key;
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${category.label}`);
+    toggle.innerHTML = `
+      <span class="ingredient-category-toggle-circle" aria-hidden="true"></span>
+      <span class="ingredient-category-title">${escapeHtml(category.label)}</span>
+    `;
+    section.appendChild(toggle);
+
+    const body = document.createElement('div');
+    body.className = 'ingredient-category-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'ingredient-category-meta';
+    meta.innerHTML = `<p>${escapeHtml(category.description)}</p>`;
+    body.appendChild(meta);
+
+    const grid = document.createElement('div');
+    grid.className = 'chip-grid';
+    renderChipGroup(category.key, grid);
+    body.appendChild(grid);
+
+    section.appendChild(body);
+    el.ingredientCategories.appendChild(section);
+  });
 }
 
 function renderChipGroup(category, container) {
-  const items = [...(siteConfig.ingredients?.[category] || [])];
+  const items = siteConfig.ingredients?.[category] || [];
   container.innerHTML = '';
 
   if (!items.length) {
@@ -586,59 +681,25 @@ function renderChipGroup(category, container) {
   }
 
   const hint = document.createElement('div');
-  hint.className = 'settings-help ingredient-group-hint';
+  hint.className = 'settings-help';
   hint.textContent = 'Tap to cycle quantity. Counts should match the unit hint when possible.';
   container.appendChild(hint);
 
-  const decoratedItems = items.map(item => {
-    const key = normalizeIngredient(item.name);
-    const qty = pantryCounts[key] || 0;
-    return { item, key, qty };
-  }).sort((a, b) => {
-    const aHave = a.qty > 0;
-    const bHave = b.qty > 0;
+  const sortedItems = [...items].sort((a, b) => {
+    const aQty = pantryCounts[normalizeIngredient(a.name)] || 0;
+    const bQty = pantryCounts[normalizeIngredient(b.name)] || 0;
+    const aHave = aQty > 0;
+    const bHave = bQty > 0;
     if (aHave !== bHave) return aHave ? -1 : 1;
-    return a.item.name.localeCompare(b.item.name);
+    return a.name.localeCompare(b.name);
   });
 
-  const haveItems = decoratedItems.filter(entry => entry.qty > 0);
-  const needItems = decoratedItems.filter(entry => entry.qty <= 0);
+  const haveItems = sortedItems.filter(item => (pantryCounts[normalizeIngredient(item.name)] || 0) > 0);
+  const needItems = sortedItems.filter(item => (pantryCounts[normalizeIngredient(item.name)] || 0) <= 0);
 
-  container.appendChild(buildIngredientGroup('Have', haveItems, true));
-
-  if (haveItems.length && needItems.length) {
-    const divider = document.createElement('div');
-    divider.className = 'ingredient-group-divider';
-    container.appendChild(divider);
-  }
-
-  container.appendChild(buildIngredientGroup(haveItems.length ? 'Need / Available' : 'Available', needItems, false));
-}
-
-function buildIngredientGroup(label, entries, isHaveGroup) {
-  const section = document.createElement('section');
-  section.className = 'ingredient-group';
-
-  const heading = document.createElement('div');
-  heading.className = 'ingredient-group-heading';
-  heading.innerHTML = `
-    <span class="ingredient-group-title">${escapeHtml(label)}</span>
-    <span class="ingredient-group-count">${entries.length}</span>
-  `;
-  section.appendChild(heading);
-
-  if (!entries.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state small-empty ingredient-group-empty';
-    empty.textContent = isHaveGroup ? 'Nothing marked on hand yet.' : 'No remaining ingredients in this section.';
-    section.appendChild(empty);
-    return section;
-  }
-
-  const grid = document.createElement('div');
-  grid.className = 'chip-grid ingredient-chip-grid';
-
-  entries.forEach(({ item, key, qty }) => {
+  const createChipButton = (item) => {
+    const key = normalizeIngredient(item.name);
+    const qty = pantryCounts[key] || 0;
     const unitHint = item.pantryUnit ? ` • ${item.pantryUnit}` : '';
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -652,11 +713,34 @@ function buildIngredientGroup(label, entries, isHaveGroup) {
       currentPage = 1;
       renderAll();
     });
-    grid.appendChild(btn);
-  });
+    return btn;
+  };
 
-  section.appendChild(grid);
-  return section;
+  const appendGroup = (label, groupItems, extraClass = '') => {
+    if (!groupItems.length) return;
+    const group = document.createElement('div');
+    group.className = `ingredient-chip-group ${extraClass}`.trim();
+
+    const title = document.createElement('div');
+    title.className = 'ingredient-chip-group-title';
+    title.textContent = label;
+    group.appendChild(title);
+
+    const groupGrid = document.createElement('div');
+    groupGrid.className = 'chip-grid ingredient-chip-grid';
+    groupItems.forEach(item => groupGrid.appendChild(createChipButton(item)));
+    group.appendChild(groupGrid);
+
+    container.appendChild(group);
+  };
+
+  appendGroup('Have', haveItems);
+  if (haveItems.length && needItems.length) {
+    const divider = document.createElement('div');
+    divider.className = 'ingredient-chip-divider';
+    container.appendChild(divider);
+  }
+  appendGroup('Need / Available', needItems, 'is-need-group');
 }
 
 function getScoredRecipes() {
@@ -1428,9 +1512,48 @@ function renderSettingsForm() {
     el.themeOptions.appendChild(btn);
   });
 
-  renderManageList('meats', el.manageMeats);
-  renderManageList('veggies', el.manageVeggies);
-  renderManageList('grains', el.manageGrains);
+  renderSettingsCategoryPages();
+}
+
+function renderSettingsCategoryPages() {
+  if (!el.settingsNav || !el.settingsCategoryPages) return;
+
+  el.settingsNav.innerHTML = '';
+  el.settingsCategoryPages.innerHTML = '';
+
+  CATEGORY_DEFS.forEach(category => {
+    const navBtn = document.createElement('button');
+    navBtn.type = 'button';
+    navBtn.className = 'tab-btn settings-nav-btn';
+    navBtn.dataset.settingsTab = category.key;
+    navBtn.textContent = category.label;
+    el.settingsNav.appendChild(navBtn);
+
+    const page = document.createElement('section');
+    page.className = 'settings-page';
+    page.dataset.settingsPage = category.key;
+    page.innerHTML = `
+      <section class="settings-section ingredient-page-section">
+        <div class="ingredient-admin-card single-admin-card">
+          <div class="ingredient-admin-top">
+            <div>
+              <p class="section-label">Ingredients</p>
+              <h3>Manage ${escapeHtml(category.label.toLowerCase())}</h3>
+            </div>
+            <p class="settings-help">Add, rename, or remove ${escapeHtml(category.label.toLowerCase())} chip options.</p>
+          </div>
+          <div class="inline-add-row wide-add-row">
+            <input id="add-${category.key}-input" type="text" placeholder="${escapeHtml(category.placeholder)}" maxlength="40" />
+            <button class="primary-btn small-btn" data-add-ingredient="${category.key}" type="button">Add</button>
+          </div>
+          <div id="manage-${category.key}" class="manage-list"></div>
+        </div>
+      </section>
+    `;
+    el.settingsCategoryPages.appendChild(page);
+
+    renderManageList(category.key, page.querySelector(`#manage-${category.key}`));
+  });
 }
 
 function renderManageList(category, container) {
@@ -1535,10 +1658,9 @@ function resetSettings() {
   groceryItems = [];
   mealPlan = [];
 
-  fetch('data/site.json')
-    .then(r => r.json())
-    .then(defaultConfig => {
-      siteConfig = buildSiteConfig(defaultConfig, null);
+  Promise.all([fetch('data/site.json').then(r => r.json()), loadIngredientCatalog()])
+    .then(([defaultConfig, ingredientCatalog]) => {
+      siteConfig = buildSiteConfig(defaultConfig, null, ingredientCatalog);
       enrichIngredientProfiles();
       applyTheme(siteConfig.defaultTheme || 'citrus');
       applyBranding();

@@ -1,115 +1,79 @@
 # What's for Dinner
 
-Static GitHub Pages cooking app for browsing recipes, tracking what you have on hand, building a grocery list, and planning meals.
+GitHub Pages demo for a tablet-friendly cooking app.
 
-Live site:
-https://jstiner.github.io/WhatsForDinner/
+Live site: https://jstiner.github.io/WhatsForDinner/
 
 ## What it does
-- Shows recipes in a left-side cookbook list on desktop
-- Shows ingredient panels on the right for meats, veggies, and grains
-- On mobile, stacks the sections for easier use
-- Ranks recipes based on how much of the recipe your pantry currently covers
-- Supports recipe paging at 10 recipes per page
-- Supports multiple recipe files through a recipe index with an in-app Cook Book filter
-- Lets you open a recipe and switch between grocery details and cooking directions
-- Scales recipe grocery math by serving size
-- Tracks pantry quantities locally in the browser
-- Builds a grocery list from missing ingredients only
-- Supports a meal plan with aggregated shortages across planned recipes
-- Lets you customize app title, tagline, theme, and ingredient lists locally
-- Supports collapsible desktop sections
+- Ranks recipes based on what is in your pantry.
+- Lets you track pantry quantities by tapping ingredient chips.
+- Splits ingredients into cookbook-style sections:
+  - meats
+  - veggies
+  - grains
+  - dairy
+  - spices
+  - sauces
+  - bakery
+  - pantry
+- Supports multiple recipe files through a cookbook filter.
+- Opens each recipe in a modal with:
+  - scaled grocery list
+  - serving size selector
+  - add missing items to grocery list
+  - add or remove from weekly meal plan
+  - directions tab
+- Maintains a grocery list with merged structured items.
+- Maintains a weekly meal plan and calculates shortages against one shared pantry.
+- Saves theme, pantry counts, grocery list, meal plan, and local ingredient edits in browser local storage.
 
-## Ingredient panels
-Each ingredient section now renders in two visual groups:
-- **Have**: items currently marked on hand, sorted A to Z
-- **Need / Available**: items not currently on hand, sorted A to Z
+## Ingredient behavior
+- Tap an ingredient chip to cycle quantity from `0` to `9`, then back to `0`.
+- Recipe scoring looks at quantity coverage, not just yes/no matching.
+- In the recipe detail grocery tab, trackable ingredients are grouped visually:
+  - **Have** — alphabetized
+  - **Need / Available** — alphabetized
+  - a thin divider appears between the groups when both exist
+- Structured grocery items merge automatically by ingredient and unit.
 
-A thin divider is shown between the groups when both groups contain items.
+## File structure
+- `index.html` — app shell, panels, recipe modal, settings modal
+- `styles.css` — layout, themes, tablet/mobile styling
+- `app.js` — app logic, recipe scoring, pantry tracking, grocery list logic, meal plan logic, settings rendering
+- `data/site.json` — branding defaults and theme list
+- `data/ingredients/` — ingredient catalog split by category
+  - `meats.json`
+  - `veggies.json`
+  - `grains.json`
+  - `dairy.json`
+  - `spices.json`
+  - `sauces.json`
+  - `bakery.json`
+  - `pantry.json`
+- `data/recipes/recipe_index.json` — cookbook file index when using split recipe files
+- `data/recipes/*.json` — recipe files
+- `data/recipes.json` — fallback single-file recipe source
 
-Ingredient chips cycle quantity when tapped:
-- 0 = not on hand
-- 1 through 9 = quantity on hand
-- the next tap after 9 resets back to 0
+## Ingredient catalog notes
+The ingredient files under `data/ingredients/` are the master selectable pantry catalog.
 
-The unit hint shown on each chip comes from the ingredient's pantry unit.
+Each file should contain:
+- common household ingredients for that category
+- any normalized recipe ingredients that should be selectable in the pantry UI
 
-## Recipe ranking
-Recipes are scored from your pantry state using structured grocery items.
+Use normalized ingredient names such as:
+- `Mozzarella Cheese`
+- `Soy Sauce`
+- `Garlic`
+- `Chicken Broth`
 
-Ranking priority is:
-1. Recipes with everything covered
-2. Higher coverage percentage
-3. Lower total missing amount
-4. Recipe name A to Z
+Do not use full grocery phrases such as:
+- `2 cups mozzarella cheese`
+- `3 tbsp soy sauce`
+- `2 cloves garlic`
 
-## Recipe modal
-Each recipe modal includes:
-- Grocery tab
-- Directions tab
-- Serving size selector
-- Add missing to grocery list
-- Add or remove from meal plan
-- Per-line status such as Have it, partial, or need
-
-Manual grocery lines are still supported for items that cannot be parsed into structured pantry math.
-
-## Grocery list
-The grocery list:
-- rolls up matching structured ingredients automatically
-- keeps track of which recipes contributed items
-- supports copy shopping list
-- supports clearing the full list
-- avoids adding ingredients already covered by the pantry when using recipe shortage actions
-
-## Meal plan
-The meal plan:
-- stores recipes with a serving count
-- lets you adjust servings per planned meal
-- calculates combined shortages across all planned meals
-- can add aggregated plan shortages into the grocery list
-
-## Settings
-The settings modal supports:
-- app title edit
-- tagline edit
-- theme selection
-- add ingredient
-- rename ingredient
-- change pantry unit hint
-- remove ingredient
-
-These changes are stored locally in the current browser.
-
-## Data structure
-### Core files
-- `index.html` - app shell and modal markup
-- `styles.css` - layout, themes, responsive styling, grouping styles
-- `app.js` - app logic, ranking, pantry math, grocery list, meal plan, settings
-- `data/site.json` - branding, themes, default ingredient lists
-- `data/recipes.json` - fallback single-file recipe source
-
-### Multi-file recipe support
-Preferred structure:
-- `data/recipes/recipe_index.json`
-- `data/recipes/<file>.json`
-
-Example `recipe_index.json`:
-
-```json
-{
-  "files": [
-    "chicken_recipes.json",
-    "beef_recipes.json",
-    "pasta_recipes.json"
-  ]
-}
-```
-
-If the recipe index is not present, the app falls back to `data/recipes.json`.
-
-### Recipe format
-Each recipe should include:
+## Recipe data shape
+Each recipe should include the fields below.
 
 ```json
 {
@@ -120,77 +84,55 @@ Each recipe should include:
   "difficulty": "Easy",
   "servings": 4,
   "ingredients": {
-    "meats": ["chicken"],
+    "meats": ["chicken breast"],
     "veggies": ["broccoli", "onion"],
-    "grains": ["rice"]
+    "grains": ["white rice"],
+    "sauces": ["soy sauce"],
+    "spices": ["garlic powder"]
   },
   "groceryList": [
-    "1.5 lb chicken breast or thighs",
+    "1.5 lb chicken breast",
     "3 cups broccoli florets",
-    "1 small onion, sliced",
+    "1 small onion",
     "2 cups cooked rice"
   ],
   "groceryItems": [
-    { "quantity": 1.5, "unit": "lb", "name": "chicken breast or thighs", "pantryKey": "chicken" },
-    { "quantity": 3, "unit": "cup", "name": "broccoli florets", "pantryKey": "broccoli" },
-    { "quantity": 1, "unit": "count", "name": "onion", "pantryKey": "onion" },
-    { "quantity": 2, "unit": "cup", "name": "cooked rice", "pantryKey": "rice" }
+    { "quantity": 1.5, "unit": "lb", "name": "Chicken Breast", "pantryKey": "chicken breast" },
+    { "quantity": 3, "unit": "cup", "name": "Broccoli", "pantryKey": "broccoli" }
   ],
   "directions": [
-    "Cook rice according to package directions.",
+    "Cook the rice.",
     "Cook the chicken.",
-    "Add vegetables and sauce.",
-    "Serve over rice."
+    "Add the vegetables and sauce."
   ]
 }
 ```
 
-### Notes on grocery data
-- `groceryItems` is preferred because it enables pantry coverage math and shortage rollups
-- `groceryList` can still be used as a fallback
-- freeform display lines are supported, but they do not participate in pantry quantity math unless they can be normalized into a structured item
+## Recipe and ingredient maintenance
+When you add recipes:
+1. Put normalized ingredient tags under the proper `ingredients` category.
+2. Make sure those tags also exist in one of the files under `data/ingredients/`.
+3. Keep `groceryItems` structured when possible so shortages and grocery merging stay accurate.
+4. Use `groceryList` for display-friendly text when needed.
 
-## How to use it
-### Everyday use
-1. Open the app.
-2. In Ingredients, tap chips to mark what you have.
-3. Review the ranked recipe list.
-4. Open a recipe.
-5. Adjust servings if needed.
-6. Add missing items to the grocery list or add the recipe to the meal plan.
-7. Copy the grocery list when you are ready to shop.
+## Settings behavior
+The settings modal lets you:
+- edit app title
+- edit tag line
+- switch color themes
+- add, rename, assign unit hints, and remove ingredient chips by category
 
-### Managing recipes
-1. Add or edit recipe JSON files.
-2. If using multiple files, update `data/recipes/recipe_index.json`.
-3. Commit and push to GitHub.
-4. GitHub Pages will publish the update.
-
-### Managing ingredients and branding
-You can either:
-- edit `data/site.json` for repo-backed defaults, or
-- use the in-app settings panel for browser-local customization
-
-## Local storage keys
-The app stores data in browser local storage for:
-- site branding and ingredient edits
-- selected theme
-- pantry counts
-- grocery list
-- meal plan
-- collapsed section state
-
-Clearing browser storage or using Reset Settings will remove local customizations.
+These changes are local to the browser unless you also update the JSON files in the repo.
 
 ## GitHub Pages setup
-1. Create or use a GitHub repository.
-2. Put the app files at the repo root.
+1. Create a repo named `whats-for-dinner` or any repo name you prefer.
+2. Upload these files to the repo root.
 3. In GitHub, go to **Settings > Pages**.
-4. Deploy from the main branch root.
-5. Open the published Pages URL.
+4. Set the source to deploy from the main branch root.
+5. Open the GitHub Pages URL once deployment completes.
 
-## Current limitations
-- Login, shared accounts, and sync across devices are not included in this static version
-- Pantry, settings, grocery list, and meal plan are local to one browser
-- Quantity math depends on reasonably structured `groceryItems`
-- This project is front-end only; there is no database in the current build
+## Notes
+- This is a static site and works well on GitHub Pages.
+- Browser storage is used for local customizations and pantry state.
+- Reset Settings clears local pantry, grocery list, meal plan, theme, and ingredient edits.
+- The fallback loader still supports `data/recipes.json` if split recipe files are not present.
