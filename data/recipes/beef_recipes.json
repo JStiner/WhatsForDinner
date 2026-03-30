@@ -1,0 +1,28 @@
+[
+  {
+    "id": "steak-fajita-bowls",
+    "name": "Steak Fajita Bowls",
+    "description": "Quick skillet steak with peppers and rice.",
+    "time": "30 min",
+    "difficulty": "Easy",
+    "servings": 4,
+    "ingredients": {
+      "meats": [
+        "steak"
+      ],
+      "veggies": [
+        "bell pepper",
+        "onion"
+      ],
+      "grains": [
+        "rice"
+      ]
+    },
+    "groceryList": [
+      "1.5 lb flank steak"
+    ],
+    "directions": [
+      "Cook and serve."
+    ]
+  }
+]
