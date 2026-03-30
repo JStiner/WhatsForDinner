@@ -226,12 +226,23 @@ body.theme-midnight .chip {
 
 body.theme-midnight .recipe-card,
 body.theme-midnight .chip-block,
-body.theme-midnight .modal-card,
 body.theme-midnight .manage-row,
 body.theme-midnight .ingredient-admin-card,
 body.theme-midnight .shopping-item,
 body.theme-midnight input {
-  background: rgba(255,255,255,0.03);
+  background: #1b2132;
+}
+
+body.theme-midnight .modal-card {
+  background: #161c2b;
+}
+
+body.theme-midnight .modal-backdrop {
+  background: rgba(5, 8, 16, 0.74);
+}
+
+body.theme-midnight .modal-close {
+  background: #1d2436;
 }
 
 .recipe-title-row,
@@ -600,7 +611,7 @@ input {
 body.theme-midnight .ingredient-action-item,
 body.theme-midnight .settings-page,
 body.theme-midnight .single-admin-card {
-  background: rgba(255,255,255,0.03);
+  background: #1b2132;
 }
 
 @media (max-width: 720px) {
