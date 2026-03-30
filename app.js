@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'wfd-demo-settings-v6';
+const STORAGE_KEY = 'wfd-demo-settings-v7';
 
 const state = {
   defaultSite: null,
@@ -78,7 +78,9 @@ function loadSettings(site) {
     recipeSelections: {},
     manualGroceryItems: {},
     recipeItemSelections: {},
-    recipeServingSelections: {}
+    recipeServingSelections: {},
+    pantryQuantities: {},
+    canMakeRecipes: {}
   };
 
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -93,7 +95,9 @@ function loadSettings(site) {
       recipeSelections: parsed.recipeSelections || parsed.grocerySelections || {},
       manualGroceryItems: parsed.manualGroceryItems || {},
       recipeItemSelections: parsed.recipeItemSelections || {},
-      recipeServingSelections: parsed.recipeServingSelections || {}
+      recipeServingSelections: parsed.recipeServingSelections || {},
+      pantryQuantities: parsed.pantryQuantities || {},
+      canMakeRecipes: parsed.canMakeRecipes || {}
     };
   } catch (_) {
     return defaults;
@@ -129,6 +133,127 @@ function saveSettings() {
 function applySettingsToSite() {
   state.site = structuredClone(state.defaultSite);
   state.site.ingredients = structuredClone(state.settings.ingredients);
+}
+
+
+function ensurePantryGroup(groupKey) {
+  if (!state.settings.pantryQuantities) state.settings.pantryQuantities = {};
+  if (!state.settings.pantryQuantities[groupKey]) state.settings.pantryQuantities[groupKey] = {};
+  return state.settings.pantryQuantities[groupKey];
+}
+
+function getPantryQuantity(groupKey, itemId) {
+  const group = ensurePantryGroup(groupKey);
+  const value = Number(group[itemId] || 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function setPantryQuantity(groupKey, itemId, nextValue) {
+  const group = ensurePantryGroup(groupKey);
+  const safeValue = Math.max(0, Math.min(10, Number(nextValue) || 0));
+  if (safeValue > 0) {
+    group[itemId] = safeValue;
+    state.selected[groupKey].add(itemId);
+  } else {
+    delete group[itemId];
+    state.selected[groupKey].delete(itemId);
+  const group = ensurePantryGroup(groupKey);
+  delete group[itemId];
+  }
+}
+
+function getPantrySelectedCount() {
+  return Object.values(state.settings.pantryQuantities || {}).reduce((sum, group) => {
+    return sum + Object.values(group || {}).filter((value) => Number(value) > 0).length;
+  }, 0);
+}
+
+function getAllIngredientOptions() {
+  return [
+    ...state.site.ingredients.meats.map((item) => ({ ...item, group: 'meats' })),
+    ...state.site.ingredients.veggies.map((item) => ({ ...item, group: 'veggies' })),
+    ...state.site.ingredients.grains.map((item) => ({ ...item, group: 'grains' }))
+  ];
+}
+
+function getItemPantryMatches(item) {
+  const itemText = normalizeIngredientText(`${item.name || ''} ${item.note || ''} ${item.display || ''}`);
+  if (!itemText) return [];
+
+  return getAllIngredientOptions().filter((option) => {
+    const label = normalizeIngredientText(option.name);
+    return label && (itemText.includes(label) || label.includes(itemText));
+  });
+}
+
+function isCountLikeUnit(unit) {
+  const normalized = String(unit || '').toLowerCase().trim();
+  return ['', 'small', 'medium', 'large', 'count', 'piece', 'pieces', 'item', 'items', 'clove', 'cloves', 'head', 'heads', 'ear', 'ears', 'stalk', 'stalks', 'sprig', 'sprigs'].includes(normalized);
+}
+
+function getRecipeItemCoverage(recipe, item) {
+  const matches = getItemPantryMatches(item);
+  const pantryQuantity = matches.reduce((sum, match) => sum + getPantryQuantity(match.group, match.id), 0);
+  const quantitative = item.quantity !== null && isCountLikeUnit(item.unit);
+  const requiredQuantity = quantitative ? item.quantity : (matches.length ? 1 : (item.quantity !== null ? item.quantity : 1));
+  const missingQuantity = Math.max(0, requiredQuantity - pantryQuantity);
+  const hasEnough = matches.length > 0 && (quantitative ? pantryQuantity >= requiredQuantity : pantryQuantity > 0);
+  const hasSome = matches.length > 0 && pantryQuantity > 0 && !hasEnough;
+
+  return {
+    matches,
+    pantryQuantity,
+    requiredQuantity,
+    missingQuantity,
+    quantitative,
+    hasEnough,
+    hasSome,
+    needsPurchase: !hasEnough,
+    shortLabel: hasEnough
+      ? (quantitative ? `Have ${formatQuantity(pantryQuantity)}` : 'Have it')
+      : hasSome
+        ? `Have ${formatQuantity(pantryQuantity)} / Need ${formatQuantity(missingQuantity)}`
+        : (quantitative ? `Need ${formatQuantity(requiredQuantity)}` : 'Need to buy')
+  };
+}
+
+function getRecipeCoverageSummary(recipe, servings = null) {
+  const items = buildRecipeListItems(recipe, servings || getRecipeServings(recipe));
+  let enough = 0;
+  let partial = 0;
+  let missing = 0;
+
+  items.forEach((item) => {
+    const coverage = getRecipeItemCoverage(recipe, item);
+    if (coverage.hasEnough) enough += 1;
+    else if (coverage.hasSome) partial += 1;
+    else missing += 1;
+  });
+
+  return { items, enough, partial, missing, total: items.length };
+}
+
+function isRecipeReadyNow(recipe) {
+  if (state.settings.canMakeRecipes?.[recipe.id]) return true;
+  const summary = getRecipeCoverageSummary(recipe, getSavedRecipeServings(recipe.id) || getRecipeServings(recipe));
+  return summary.total > 0 && summary.missing === 0 && summary.partial === 0;
+}
+
+function getRecipeAddableItem(recipe, item, selectedServings) {
+  const scaledItem = buildRecipeListItems(recipe, selectedServings).find((entry) => entry.key === item.key) || item;
+  const coverage = getRecipeItemCoverage(recipe, scaledItem);
+
+  if (coverage.hasEnough) return null;
+
+  if (scaledItem.quantity !== null && coverage.quantitative) {
+    return {
+      ...scaledItem,
+      quantity: coverage.missingQuantity,
+      display: formatIngredientDisplay(coverage.missingQuantity, scaledItem.unit, scaledItem.name, scaledItem.note)
+    };
+  }
+
+  return scaledItem;
 }
 
 function bindEvents() {
@@ -206,79 +331,90 @@ function renderChipGroup(groupKey, items, mount) {
   mount.innerHTML = '';
 
   items.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `chip${state.selected[groupKey].has(item.id) ? ' active' : ''}`;
-    btn.textContent = item.name;
-    btn.addEventListener('click', () => {
-      toggleSelection(groupKey, item.id);
+    const quantity = getPantryQuantity(groupKey, item.id);
+    const row = document.createElement('div');
+    row.className = `pantry-chip${quantity > 0 ? ' active' : ''}`;
+    row.innerHTML = `
+      <button class="pantry-label-btn" type="button">${escapeHtml(item.name)}</button>
+      <div class="pantry-stepper" aria-label="${escapeAttribute(item.name)} quantity">
+        <button class="pantry-stepper-btn" type="button" data-action="decrease">−</button>
+        <span class="pantry-count">${quantity}</span>
+        <button class="pantry-stepper-btn" type="button" data-action="increase">+</button>
+      </div>
+    `;
+
+    row.querySelector('.pantry-label-btn').addEventListener('click', () => {
+      setPantryQuantity(groupKey, item.id, quantity + 1);
+      state.currentRecipePage = 1;
       renderChips();
       renderRecipes();
+      if (state.activeRecipe) openRecipeModal(state.activeRecipe.id);
     });
-    mount.appendChild(btn);
+
+    row.querySelector('[data-action="decrease"]').addEventListener('click', () => {
+      setPantryQuantity(groupKey, item.id, quantity - 1);
+      state.currentRecipePage = 1;
+      renderChips();
+      renderRecipes();
+      if (state.activeRecipe) openRecipeModal(state.activeRecipe.id);
+    });
+
+    row.querySelector('[data-action="increase"]').addEventListener('click', () => {
+      setPantryQuantity(groupKey, item.id, quantity + 1);
+      state.currentRecipePage = 1;
+      renderChips();
+      renderRecipes();
+      if (state.activeRecipe) openRecipeModal(state.activeRecipe.id);
+    });
+
+    mount.appendChild(row);
   });
 }
 
 function toggleSelection(groupKey, itemId) {
-  const bucket = state.selected[groupKey];
-  if (bucket.has(itemId)) {
-    bucket.delete(itemId);
-  } else {
-    bucket.add(itemId);
-  }
+  const current = getPantryQuantity(groupKey, itemId);
+  setPantryQuantity(groupKey, itemId, current > 0 ? 0 : 1);
   state.currentRecipePage = 1;
 }
 
 function clearFilters() {
+  state.settings.pantryQuantities = { meats: {}, veggies: {}, grains: {} };
   Object.values(state.selected).forEach((setObj) => setObj.clear());
   state.currentRecipePage = 1;
   renderChips();
   renderRecipes();
+  if (state.activeRecipe) openRecipeModal(state.activeRecipe.id);
 }
 
 function getRankedRecipes() {
-  const selectedFlat = [
-    ...state.selected.meats,
-    ...state.selected.veggies,
-    ...state.selected.grains
-  ];
-
-  const selectedCount = selectedFlat.length;
-
   return state.recipes.map((recipe) => {
-    const required = [
-      ...recipe.ingredients.meats,
-      ...recipe.ingredients.veggies,
-      ...recipe.ingredients.grains
-    ];
+    const servings = getSavedRecipeServings(recipe.id) || getRecipeServings(recipe);
+    const coverage = getRecipeCoverageSummary(recipe, servings);
+    const readyNow = isRecipeReadyNow(recipe);
+    const manuallyMarked = Boolean(state.settings.canMakeRecipes?.[recipe.id]);
+    const addedCount = state.settings.recipeSelections[recipe.id] || 0;
 
-    const matched = required.filter((id) => selectedFlat.includes(id));
-    const missing = required.filter((id) => !selectedFlat.includes(id));
-
-    let score = matched.length * 10;
-
-    if (selectedCount > 0 && required.length > 0) {
-      score += matched.length / required.length;
-    }
-
-    if (recipe.ingredients.meats.some((id) => state.selected.meats.has(id))) score += 6;
-    if (recipe.ingredients.veggies.some((id) => state.selected.veggies.has(id))) score += 3;
-    if (recipe.ingredients.grains.some((id) => state.selected.grains.has(id))) score += 2;
-
-    if (selectedCount === 0) score = 0;
+    const score = (readyNow ? 500 : 0)
+      + (manuallyMarked ? 150 : 0)
+      + (coverage.enough * 15)
+      + (coverage.partial * 8)
+      - (coverage.missing * 4)
+      + addedCount;
 
     return {
       ...recipe,
-      matchCount: matched.length,
-      totalTrackedIngredients: required.length,
-      matched,
-      missing,
       score,
-      addedCount: state.settings.recipeSelections[recipe.id] || 0
+      readyNow,
+      manuallyMarked,
+      addedCount,
+      matchCount: coverage.enough + coverage.partial,
+      totalTrackedIngredients: coverage.total,
+      missingCount: coverage.missing,
+      partialCount: coverage.partial
     };
   }).sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+    if (a.missingCount !== b.missingCount) return a.missingCount - b.missingCount;
     return a.name.localeCompare(b.name);
   });
 }
@@ -301,16 +437,16 @@ function renderRecipes() {
     ? `${rangeStart}-${rangeEnd} of ${totalRecipes} recipes`
     : '0 recipes';
 
-  const selectedCount = [...state.selected.meats, ...state.selected.veggies, ...state.selected.grains].length;
+  const selectedCount = getPantrySelectedCount();
 
   if (selectedCount === 0) {
-    els.matchSummary.textContent = 'Showing all recipes. Select meats, veggies, or grains to move your best matches to the top.';
+    els.matchSummary.textContent = 'Showing all recipes. Use the pantry controls to set what you have and how much is on hand.';
   } else {
     const top = ranked[0];
-    const perfect = top?.missing.length === 0 && top?.matchCount > 0;
+    const perfect = top?.readyNow;
     els.matchSummary.textContent = perfect
-      ? `Best match: ${top.name}. You currently have everything tracked for this recipe.`
-      : `Prioritized using ${selectedCount} selected ingredient${selectedCount === 1 ? '' : 's'}. Top recipes match the most items you already have.`;
+      ? `Best match: ${top.name}. You can make this now with what is already in your pantry.`
+      : `Prioritized using ${selectedCount} pantry item${selectedCount === 1 ? '' : 's'}. Recipes with more coverage and fewer gaps rise to the top.`;
   }
 
   if (!totalRecipes) {
@@ -324,12 +460,16 @@ function renderRecipes() {
     card.className = 'recipe-card';
 
     const matchedText = recipe.matchCount
-      ? `${recipe.matchCount}/${recipe.totalTrackedIngredients} matched`
+      ? `${recipe.matchCount}/${recipe.totalTrackedIngredients} covered`
       : 'Suggested recipe';
 
-    const missingText = recipe.missing.length
-      ? `${recipe.missing.length} still needed`
+    const missingText = recipe.missingCount
+      ? `${recipe.missingCount} still needed${recipe.partialCount ? ` • ${recipe.partialCount} partial` : ''}`
       : 'Ready to cook';
+
+    const readyBadge = recipe.manuallyMarked
+      ? '<span class="ready-pill manual">Marked ready</span>'
+      : (recipe.readyNow ? '<span class="ready-pill">Can make now</span>' : '');
 
     const addedText = recipe.addedCount > 0
       ? `<span class="list-count-pill">Add all x${recipe.addedCount}</span>`
@@ -343,6 +483,7 @@ function renderRecipes() {
             <span class="badge">${escapeHtml(recipe.difficulty)}</span>
             <span class="score-pill">${escapeHtml(matchedText)}</span>
             <span class="missing-pill">${escapeHtml(missingText)}</span>
+            ${readyBadge}
             ${addedText}
           </div>
           <p class="recipe-desc">${escapeHtml(recipe.description)}</p>
@@ -425,30 +566,7 @@ function buildMetaTags(recipe) {
 }
 
 function recipeItemIsSelected(recipe, item) {
-  const selectedIds = [
-    ...recipe.ingredients.meats.filter((id) => state.selected.meats.has(id)),
-    ...recipe.ingredients.veggies.filter((id) => state.selected.veggies.has(id)),
-    ...recipe.ingredients.grains.filter((id) => state.selected.grains.has(id))
-  ];
-
-  if (!selectedIds.length) return false;
-
-  const candidateStrings = [item.name, item.display]
-    .filter(Boolean)
-    .map((value) => normalizeIngredientText(value));
-
-  return selectedIds.some((id) => {
-    const label = [
-      lookupIngredientName('meats', id),
-      lookupIngredientName('veggies', id),
-      lookupIngredientName('grains', id)
-    ].find(Boolean) || id;
-
-    const normalizedLabel = normalizeIngredientText(label);
-    if (!normalizedLabel) return false;
-
-    return candidateStrings.some((candidate) => candidate.includes(normalizedLabel) || normalizedLabel.includes(candidate));
-  });
+  return getRecipeItemCoverage(recipe, item).hasEnough;
 }
 
 function normalizeIngredientText(value) {
@@ -475,6 +593,8 @@ function openRecipeModal(recipeId) {
 
   const addedCount = state.settings.recipeSelections[state.activeRecipe.id] || 0;
   const groceryItems = buildRecipeListItems(state.activeRecipe, state.activeServings);
+  const markedReady = Boolean(state.settings.canMakeRecipes?.[state.activeRecipe.id]);
+  const autoReady = isRecipeReadyNow(state.activeRecipe) && !markedReady;
 
   els.modalTitle.textContent = state.activeRecipe.name;
   els.modalMeta.innerHTML = `
@@ -483,11 +603,14 @@ function openRecipeModal(recipeId) {
     <span class="meta-tag">Selected: ${state.activeServings} servings</span>
     <span class="meta-tag">${escapeHtml(state.activeRecipe.difficulty)}</span>
     <span class="meta-tag">Add all count: ${addedCount}</span>
+    ${markedReady ? '<span class="meta-tag ready-meta-tag">Marked can make now</span>' : ''}
+    ${autoReady ? '<span class="meta-tag ready-meta-tag">Inventory says ready</span>' : ''}
   `;
 
   els.tabGrocery.innerHTML = `
     <div class="tab-actions-row">
-      <button class="primary-btn${addedCount > 0 ? ' is-added-btn' : ''}" id="add-recipe-to-list-btn" type="button">${addedCount > 0 ? `Added all x${addedCount}` : 'Add all to list'}</button>
+      <button class="primary-btn${addedCount > 0 ? ' is-added-btn' : ''}" id="add-recipe-to-list-btn" type="button">${addedCount > 0 ? `Added all x${addedCount}` : 'Add missing to list'}</button>
+      <button class="ghost-btn${markedReady ? ' is-added-btn' : ''}" id="mark-can-make-btn" type="button">${markedReady ? 'Marked can make now' : 'Mark can make now'}</button>
       <button class="ghost-btn" id="copy-recipe-grocery-btn" type="button">Copy grocery list</button>
     </div>
     <div class="servings-row">
@@ -500,16 +623,19 @@ function openRecipeModal(recipeId) {
     </div>
     <ul class="ingredients-list action-ingredients-list">
       ${groceryItems.map((item) => {
-        const haveIt = recipeItemIsSelected(state.activeRecipe, item);
+        const coverage = getRecipeItemCoverage(state.activeRecipe, item);
         const itemSelectionKey = `${state.activeRecipe.id}::${item.key}`;
         const itemCount = state.settings.recipeItemSelections[itemSelectionKey] || 0;
+        const statusClass = coverage.hasEnough ? ' have-it' : (coverage.hasSome ? ' partial-have' : ' need-buy');
+        const addableItem = getRecipeAddableItem(state.activeRecipe, item, state.activeServings);
+        const buttonLabel = itemCount > 0 ? `Added x${itemCount}` : 'Add to list';
         return `
-        <li class="ingredient-action-item${haveIt ? ' have-it' : ''}">
+        <li class="ingredient-action-item${statusClass}">
           <div class="ingredient-line-main">
-            <span class="ingredient-line-text${haveIt ? ' have-it-text' : ''}">${escapeHtml(item.display)}</span>
-            ${haveIt ? '<span class="have-it-pill">Have it</span>' : ''}
+            <span class="ingredient-line-text${coverage.hasEnough ? ' have-it-text' : ''}">${escapeHtml(item.display)}</span>
+            <span class="have-it-pill ${coverage.hasEnough ? 'status-have' : (coverage.hasSome ? 'status-partial' : 'status-need')}">${escapeHtml(coverage.shortLabel)}</span>
           </div>
-          <button class="ghost-btn small-btn${itemCount > 0 ? ' is-added-btn' : ''}" type="button" data-add-item-key="${escapeAttribute(item.key)}">${itemCount > 0 ? `Added x${itemCount}` : 'Add to list'}</button>
+          <button class="ghost-btn small-btn${itemCount > 0 ? ' is-added-btn' : ''}" type="button" data-add-item-key="${escapeAttribute(item.key)}" ${addableItem ? '' : 'disabled'}>${addableItem ? buttonLabel : 'Covered'}</button>
         </li>
       `;
       }).join('')}
@@ -533,9 +659,11 @@ function openRecipeModal(recipeId) {
     state.settings.recipeServingSelections[recipeId] = state.activeServings;
     saveSettings();
     openRecipeModal(recipeId);
+    renderRecipes();
   });
 
   document.getElementById('add-recipe-to-list-btn').addEventListener('click', () => addRecipeToList(state.activeRecipe.id));
+  document.getElementById('mark-can-make-btn').addEventListener('click', () => toggleRecipeCanMake(state.activeRecipe.id));
   document.getElementById('copy-recipe-grocery-btn').addEventListener('click', () => copyRecipeGrocery(state.activeRecipe.id));
   document.getElementById('copy-directions-btn').addEventListener('click', () => copyRecipeDirections(state.activeRecipe.id));
 
@@ -603,7 +731,9 @@ function resetSettings() {
     recipeSelections: {},
     manualGroceryItems: {},
     recipeItemSelections: {},
-    recipeServingSelections: {}
+    recipeServingSelections: {},
+    pantryQuantities: {},
+    canMakeRecipes: {}
   };
 
   Object.values(state.selected).forEach((setObj) => setObj.clear());
@@ -677,10 +807,22 @@ function addIngredient(groupKey) {
 function removeIngredient(groupKey, itemId) {
   state.settings.ingredients[groupKey] = state.settings.ingredients[groupKey].filter((item) => item.id !== itemId);
   state.selected[groupKey].delete(itemId);
+  const group = ensurePantryGroup(groupKey);
+  delete group[itemId];
   applySettingsToSite();
   renderIngredientManager();
   renderChips();
   renderRecipes();
+}
+
+function toggleRecipeCanMake(recipeId) {
+  const current = Boolean(state.settings.canMakeRecipes?.[recipeId]);
+  if (!state.settings.canMakeRecipes) state.settings.canMakeRecipes = {};
+  if (current) delete state.settings.canMakeRecipes[recipeId];
+  else state.settings.canMakeRecipes[recipeId] = true;
+  saveSettings();
+  renderRecipes();
+  if (state.activeRecipe?.id === recipeId) openRecipeModal(recipeId);
 }
 
 function addRecipeToList(recipeId) {
@@ -688,7 +830,8 @@ function addRecipeToList(recipeId) {
   if (!recipe) return;
 
   const selectedServings = getSavedRecipeServings(recipeId) || state.activeServings || getRecipeServings(recipe);
-  const itemsToAdd = buildRecipeListItems(recipe, selectedServings).filter((item) => !recipeItemIsSelected(recipe, item));
+  const baseItems = buildRecipeListItems(recipe, selectedServings);
+  const itemsToAdd = baseItems.map((item) => getRecipeAddableItem(recipe, item, selectedServings)).filter(Boolean);
   if (!itemsToAdd.length) return;
 
   state.settings.recipeServingSelections[recipeId] = selectedServings;
@@ -710,12 +853,14 @@ function addSingleIngredientToList(recipeId, itemKey) {
   if (!recipe) return;
 
   const selectedServings = getSavedRecipeServings(recipeId) || state.activeServings || getRecipeServings(recipe);
-  const item = buildRecipeListItems(recipe, selectedServings).find((entry) => entry.key === itemKey);
+  const baseItem = buildRecipeListItems(recipe, selectedServings).find((entry) => entry.key === itemKey);
+  if (!baseItem) return;
+  const item = getRecipeAddableItem(recipe, baseItem, selectedServings);
   if (!item) return;
 
   state.settings.recipeServingSelections[recipeId] = selectedServings;
 
-  const itemSelectionKey = `${recipeId}::${item.key}`;
+  const itemSelectionKey = `${recipeId}::${baseItem.key}`;
   state.settings.recipeItemSelections[itemSelectionKey] = (state.settings.recipeItemSelections[itemSelectionKey] || 0) + 1;
 
   const existing = state.settings.manualGroceryItems[item.key];
@@ -834,7 +979,7 @@ function getGroceryAggregation() {
     const servings = getSavedRecipeServings(recipeId) || getRecipeServings(recipe);
     recipeSummary.push(`${recipe.name} x${count} (${servings} servings)`);
 
-    buildRecipeListItems(recipe, servings).forEach((item) => {
+    buildRecipeListItems(recipe, servings).map((item) => getRecipeAddableItem(recipe, item, servings)).filter(Boolean).forEach((item) => {
       const existing = entries.get(item.key);
       const multipliedQuantity = item.quantity !== null ? item.quantity * count : null;
       if (existing) {
@@ -1027,9 +1172,11 @@ function copyRecipeGrocery(recipeId) {
   const servings = getSavedRecipeServings(recipeId)
     || (state.activeRecipe?.id === recipeId ? state.activeServings : null)
     || getRecipeServings(recipe);
-  const text = `${recipe.name} (${servings} servings}
-
-${buildRecipeListItems(recipe, servings).map((item) => `- ${item.display}`).join('\n')}`;
+  const lines = buildRecipeListItems(recipe, servings).map((item) => {
+    const coverage = getRecipeItemCoverage(recipe, item);
+    return `- ${item.display}${coverage.hasEnough ? ' [Have it]' : coverage.hasSome ? ` [Have ${formatQuantity(coverage.pantryQuantity)} / Need ${formatQuantity(coverage.missingQuantity)}]` : ''}`;
+  }).join('\n');
+  const text = `${recipe.name} (${servings} servings)\n\n${lines}`;
   copyText(text, 'Recipe grocery list copied.');
 }
 

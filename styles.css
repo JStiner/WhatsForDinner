@@ -896,3 +896,138 @@ html, body {
     border-radius: 18px;
   }
 }
+
+.pantry-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.38);
+  margin-top: 10px;
+}
+
+.pantry-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 55%, white 45%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, white 80%);
+}
+
+.pantry-label-btn {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  padding: 0;
+}
+
+.pantry-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pantry-stepper-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.pantry-count {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.ready-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #126b36;
+  background: rgba(38, 166, 91, 0.14);
+  border: 1px solid rgba(38, 166, 91, 0.28);
+}
+
+.ready-pill.manual,
+.ready-meta-tag {
+  color: #744312;
+  background: rgba(255, 183, 3, 0.16);
+  border: 1px solid rgba(255, 183, 3, 0.28);
+}
+
+.ingredient-action-item.partial-have {
+  border-color: rgba(255, 183, 3, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 183, 3, 0.18);
+  background: rgba(255, 183, 3, 0.08);
+}
+
+.ingredient-action-item.need-buy {
+  border-color: rgba(239, 108, 87, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(239, 108, 87, 0.12);
+}
+
+.have-it-pill.status-partial {
+  color: #744312;
+  background: rgba(255, 183, 3, 0.16);
+  border-color: rgba(255, 183, 3, 0.28);
+}
+
+.have-it-pill.status-need {
+  color: #8c2d1d;
+  background: rgba(239, 108, 87, 0.14);
+  border-color: rgba(239, 108, 87, 0.24);
+}
+
+body.theme-midnight .pantry-chip {
+  background: #1b2132;
+}
+
+body.theme-midnight .ready-pill {
+  color: #b9f3cb;
+  background: rgba(92, 214, 142, 0.14);
+  border-color: rgba(92, 214, 142, 0.3);
+}
+
+body.theme-midnight .ready-pill.manual,
+body.theme-midnight .ready-meta-tag,
+body.theme-midnight .have-it-pill.status-partial {
+  color: #ffe39a;
+  background: rgba(255, 205, 87, 0.14);
+  border-color: rgba(255, 205, 87, 0.26);
+}
+
+body.theme-midnight .have-it-pill.status-need {
+  color: #ffc7bc;
+  background: rgba(255, 127, 102, 0.14);
+  border-color: rgba(255, 127, 102, 0.26);
+}
+
+body.theme-midnight .ingredient-action-item.partial-have {
+  border-color: rgba(255, 205, 87, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 205, 87, 0.12);
+  background: rgba(255, 205, 87, 0.08);
+}
+
+body.theme-midnight .ingredient-action-item.need-buy {
+  border-color: rgba(255, 127, 102, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 127, 102, 0.12);
+}
+
+@media (max-width: 720px) {
+  .pantry-chip {
+    grid-template-columns: 1fr;
+  }
+
+  .pantry-stepper {
+    justify-content: space-between;
+  }
+}
