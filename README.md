@@ -2,6 +2,8 @@
 
 GitHub Pages demo for a tablet-friendly cooking app.
 
+https://jstiner.github.io/WhatsForDinner/
+
 ## Demo concept
 - Left side: ranked recipe list
 - Right side: ingredient chips for meats, veggies, and grains

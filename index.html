@@ -24,34 +24,50 @@
     </header>
 
     <main class="layout">
-      <section class="recipes-panel panel">
-        <div class="panel-head sticky-head">
+      <section id="recipes-section" class="recipes-panel panel collapsible-section expanded" data-section="recipes">
+        <div class="panel-head sticky-head collapsible-head">
           <div>
             <p class="section-label">Recipe list</p>
             <h2>Best matches first</h2>
           </div>
-          <div class="results-meta">
-            <span id="results-count">0 recipes</span>
+          <div class="panel-head-actions">
+            <div class="results-meta">
+              <span id="results-count">0 recipes</span>
+            </div>
+            <button class="collapse-toggle" type="button" data-toggle-section="recipes" aria-expanded="true" aria-label="Collapse recipes" title="Collapse recipes"></button>
           </div>
         </div>
 
-        <div class="match-summary" id="match-summary">
-          Pick ingredients on the right to prioritize recipes that match what you already have.
-        </div>
+        <div class="section-body" data-section-body="recipes">
+          <div class="match-summary" id="match-summary">
+            Pick ingredients on the right to prioritize recipes that match what you already have.
+          </div>
 
-        <div id="recipe-list" class="recipe-list"></div>
+          <div class="recipe-toolbar">
+            <label class="recipe-filter-label" for="recipe-file-filter">Cook Book:</label>
+            <select id="recipe-file-filter" class="recipe-filter-select">
+              <option value="all">All recipe files</option>
+            </select>
+          </div>
+
+          <div id="recipe-list" class="recipe-list"></div>
+
+          <div class="pagination-bar" id="recipe-pagination" aria-label="Recipe pages"></div>
+        </div>
       </section>
 
-      <aside class="filters-panel panel">
-        <div class="panel-head">
+      <div class="right-column">
+      <section id="ingredients-section" class="ingredients-panel panel collapsible-section expanded" data-section="ingredients">
+        <div class="chip-head collapsible-head">
+          <span class="chip-icon">🥘</span>
           <div>
-            <p class="section-label">Ingredient filters</p>
-            <h2>What do you have?</h2>
+            <h3>Ingredients</h3>
+            <p>Tap pantry chips to track what you already have.</p>
           </div>
+          <button class="collapse-toggle" type="button" data-toggle-section="ingredients" aria-expanded="true" aria-label="Collapse ingredients" title="Collapse ingredients"></button>
         </div>
-
-        <div class="chip-block-wrap">
-          <section class="chip-block">
+        <div class="section-body" data-section-body="ingredients">
+          <section class="chip-block nested-chip-block">
             <div class="chip-head">
               <span class="chip-icon">🥩</span>
               <div>
@@ -62,7 +78,7 @@
             <div id="meat-chips" class="chip-grid"></div>
           </section>
 
-          <section class="chip-block">
+          <section class="chip-block nested-chip-block">
             <div class="chip-head">
               <span class="chip-icon">🥦</span>
               <div>
@@ -73,7 +89,7 @@
             <div id="veggie-chips" class="chip-grid"></div>
           </section>
 
-          <section class="chip-block">
+          <section class="chip-block nested-chip-block">
             <div class="chip-head">
               <span class="chip-icon">🍚</span>
               <div>
@@ -83,24 +99,51 @@
             </div>
             <div id="grain-chips" class="chip-grid"></div>
           </section>
-
-          <section class="chip-block grocery-block">
-            <div class="chip-head grocery-head">
-              <span class="chip-icon">🛒</span>
-              <div>
-                <h3>Grocery list</h3>
-                <p>Recipe ingredients you add will roll up here.</p>
-              </div>
-            </div>
-            <div class="grocery-actions">
-              <button class="ghost-btn small-btn" id="copy-shopping-list-btn" type="button">Copy shopping list</button>
-              <button class="ghost-btn small-btn" id="clear-grocery-btn" type="button">Clear grocery list</button>
-            </div>
-            <div id="grocery-recipe-summary" class="grocery-summary"></div>
-            <div id="grocery-list" class="grocery-list"></div>
-          </section>
         </div>
-      </aside>
+      </section>
+
+      <section id="grocery-section" class="grocery-panel chip-block grocery-block collapsible-section expanded" data-section="shopping">
+        <div class="chip-head grocery-head collapsible-head">
+          <span class="chip-icon">🛒</span>
+          <div>
+            <h3>Grocery list</h3>
+            <p>Recipe ingredients you add will roll up here.</p>
+          </div>
+          <button class="collapse-toggle" type="button" data-toggle-section="shopping" aria-expanded="true" aria-label="Collapse grocery list" title="Collapse grocery list"></button>
+        </div>
+        <div class="section-body" data-section-body="shopping">
+          <div class="grocery-actions">
+            <button class="ghost-btn small-btn" id="copy-shopping-list-btn" type="button">Copy shopping list</button>
+            <button class="ghost-btn small-btn" id="clear-grocery-btn" type="button">Clear grocery list</button>
+          </div>
+          <div id="grocery-recipe-summary" class="grocery-summary"></div>
+          <div id="grocery-list" class="grocery-list"></div>
+        </div>
+      </section>
+
+      <section id="mealplan-section" class="meal-plan-panel chip-block meal-plan-block collapsible-section expanded" data-section="meal-plan">
+        <div class="chip-head grocery-head collapsible-head">
+          <span class="chip-icon">📅</span>
+          <div>
+            <h3>Weekly meal plan</h3>
+            <p>Plan recipes here so shortages are calculated across the whole week.</p>
+          </div>
+          <button class="collapse-toggle" type="button" data-toggle-section="meal-plan" aria-expanded="true" aria-label="Collapse meal plan" title="Collapse meal plan"></button>
+        </div>
+        <div class="section-body" data-section-body="meal-plan">
+          <div class="grocery-actions">
+            <button class="ghost-btn small-btn" id="add-plan-shortages-btn" type="button">Add plan shortages to grocery list</button>
+            <button class="ghost-btn small-btn" id="clear-meal-plan-btn" type="button">Clear meal plan</button>
+          </div>
+          <div id="meal-plan-summary" class="grocery-summary"></div>
+          <div id="meal-plan-list" class="grocery-list"></div>
+          <div class="meal-plan-subhead">
+            <strong>Planned meal shortages</strong>
+          </div>
+          <div id="meal-plan-shopping" class="grocery-list"></div>
+        </div>
+      </section>
+      </div>
     </main>
   </div>
 

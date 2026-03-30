@@ -715,3 +715,706 @@ body.theme-midnight .is-added-btn {
   border-color: rgba(255, 127, 102, 0.42);
   color: var(--text);
 }
+
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.pagination-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 22px 22px;
+}
+
+.pagination-bar.active {
+  display: flex;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.page-btn {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+
+@media (max-width: 720px) {
+  body {
+    font-size: 17px;
+  }
+
+  h1 {
+    font-size: clamp(1.65rem, 6vw, 2.1rem);
+    line-height: 1.08;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  h3 {
+    font-size: 1.08rem;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    gap: 14px;
+  }
+
+  .filters-panel {
+    order: -1;
+  }
+
+  .recipes-panel,
+  .filters-panel,
+  .panel,
+  .recipe-card,
+  .chip-block,
+  .shopping-item,
+  .ingredient-action-item,
+  .servings-row {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .recipe-list {
+    max-height: none;
+    overflow: visible;
+    gap: 14px;
+  }
+
+  .recipe-card {
+    padding: 18px;
+  }
+
+  .recipe-title-row h3 {
+    font-size: 1.18rem;
+  }
+
+  .recipe-desc,
+  .shopping-text,
+  .ingredient-line-text,
+  .chip-head p,
+  .ingredient-admin-top p,
+  .match-summary,
+  .grocery-summary,
+  .directions-list li,
+  .ingredients-list li {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .chip {
+    min-height: 44px;
+    font-size: 0.98rem;
+    padding: 10px 14px;
+  }
+
+  .ghost-btn,
+  .primary-btn,
+  .recipe-btn,
+  .page-btn,
+  .tab-btn,
+  .servings-select {
+    min-height: 44px;
+    font-size: 0.98rem;
+  }
+
+  .topbar-actions,
+  .grocery-actions,
+  .pagination-bar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .pagination-pages {
+    grid-column: 1 / -1;
+  }
+
+  .pagination-bar .ghost-btn,
+  .topbar-actions .ghost-btn,
+  .grocery-actions .ghost-btn {
+    width: 100%;
+  }
+
+  .badge,
+  .score-pill,
+  .missing-pill,
+  .list-count-pill,
+  .meta-tag {
+    font-size: 0.82rem;
+    padding: 7px 11px;
+  }
+
+  .panel-head,
+  .recipe-list,
+  .match-summary,
+  .pagination-bar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .panel-head {
+    padding-top: 16px;
+  }
+
+  .chip-block-wrap {
+    padding: 0 14px 14px;
+    gap: 12px;
+  }
+
+  .modal-card {
+    width: min(100vw - 16px, 100%);
+    max-height: calc(100vh - 16px);
+    margin: 8px auto;
+    padding: 16px;
+    border-radius: 18px;
+  }
+}
+
+.pantry-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.38);
+  margin-top: 10px;
+}
+
+.pantry-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 55%, white 45%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, white 80%);
+}
+
+.pantry-label-btn {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  padding: 0;
+}
+
+.pantry-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pantry-stepper-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.pantry-count {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.ready-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #126b36;
+  background: rgba(38, 166, 91, 0.14);
+  border: 1px solid rgba(38, 166, 91, 0.28);
+}
+
+.ready-pill.manual,
+.ready-meta-tag {
+  color: #744312;
+  background: rgba(255, 183, 3, 0.16);
+  border: 1px solid rgba(255, 183, 3, 0.28);
+}
+
+.ingredient-action-item.partial-have {
+  border-color: rgba(255, 183, 3, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 183, 3, 0.18);
+  background: rgba(255, 183, 3, 0.08);
+}
+
+.ingredient-action-item.need-buy {
+  border-color: rgba(239, 108, 87, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(239, 108, 87, 0.12);
+}
+
+.have-it-pill.status-partial {
+  color: #744312;
+  background: rgba(255, 183, 3, 0.16);
+  border-color: rgba(255, 183, 3, 0.28);
+}
+
+.have-it-pill.status-need {
+  color: #8c2d1d;
+  background: rgba(239, 108, 87, 0.14);
+  border-color: rgba(239, 108, 87, 0.24);
+}
+
+body.theme-midnight .pantry-chip {
+  background: #1b2132;
+}
+
+body.theme-midnight .ready-pill {
+  color: #b9f3cb;
+  background: rgba(92, 214, 142, 0.14);
+  border-color: rgba(92, 214, 142, 0.3);
+}
+
+body.theme-midnight .ready-pill.manual,
+body.theme-midnight .ready-meta-tag,
+body.theme-midnight .have-it-pill.status-partial {
+  color: #ffe39a;
+  background: rgba(255, 205, 87, 0.14);
+  border-color: rgba(255, 205, 87, 0.26);
+}
+
+body.theme-midnight .have-it-pill.status-need {
+  color: #ffc7bc;
+  background: rgba(255, 127, 102, 0.14);
+  border-color: rgba(255, 127, 102, 0.26);
+}
+
+body.theme-midnight .ingredient-action-item.partial-have {
+  border-color: rgba(255, 205, 87, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 205, 87, 0.12);
+  background: rgba(255, 205, 87, 0.08);
+}
+
+body.theme-midnight .ingredient-action-item.need-buy {
+  border-color: rgba(255, 127, 102, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 127, 102, 0.12);
+}
+
+@media (max-width: 720px) {
+  .pantry-chip {
+    grid-template-columns: 1fr;
+  }
+
+  .pantry-stepper {
+    justify-content: space-between;
+  }
+}
+
+
+.meal-plan-block .grocery-summary {
+  margin: 0 0 12px;
+}
+
+.meal-plan-subhead {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.meal-plan-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .meal-plan-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.panel-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.collapsible-head {
+  align-items: center;
+}
+
+.collapse-toggle {
+  margin-left: auto;
+}
+
+.section-body {
+  display: grid;
+  gap: 12px;
+}
+
+.collapsible-section.collapsed .section-body {
+  display: none;
+}
+
+.collapsible-section.collapsed .collapse-toggle::after {
+  content: '';
+}
+
+.recipes-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-list {
+  flex: 1 1 auto;
+  min-height: calc(100vh - 260px);
+  max-height: none;
+}
+
+.filters-panel {
+  padding-top: 18px;
+}
+
+.ingredients-block > .section-body {
+  gap: 12px;
+}
+
+.nested-chip-block {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.meal-plan-subhead {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+@media (min-width: 1081px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.85fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .filters-panel {
+    order: 2;
+    padding-top: 0;
+  }
+
+  .recipes-panel {
+    order: 1;
+  }
+
+  .shopping-block,
+  .meal-plan-block,
+  .ingredients-block {
+    order: initial;
+  }
+
+  .grocery-block { order: 1; }
+  .meal-plan-block { order: 2; }
+  .ingredients-block { order: 3; }
+
+  .recipe-list {
+    min-height: 0;
+  }
+
+  .collapse-toggle {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .panel-head-actions {
+    width: 100%;
+  }
+}
+
+
+/* v4 layout and controls */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+  min-height: calc(100vh - 110px);
+}
+
+#recipes-section {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 110px);
+}
+
+#ingredients-section,
+#grocery-section,
+#mealplan-section {
+  grid-column: 2;
+}
+
+#ingredients-section,
+#grocery-section,
+#mealplan-section {
+  margin-top: 0;
+}
+
+#ingredients-section { margin-bottom: 14px; }
+#grocery-section { margin-bottom: 14px; }
+
+#recipes-section > .section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.recipe-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 22px;
+  flex-wrap: wrap;
+}
+
+.recipe-filter-label {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.recipe-filter-select {
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--chip-bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.collapse-toggle {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--chip-bg);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+.collapse-toggle::before {
+  content: '›';
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 800;
+  transform: rotate(90deg);
+  transition: transform 0.18s ease;
+}
+
+.collapsible-section.collapsed .collapse-toggle::before {
+  transform: rotate(180deg);
+}
+
+.collapsible-section.collapsed .collapse-toggle::after {
+  content: '';
+}
+
+.recipe-list {
+  flex: 1 1 auto;
+  min-height: 780px;
+  max-height: none;
+  overflow: auto;
+}
+
+.filters-panel {
+  display: contents;
+}
+
+@media (max-width: 720px) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    gap: 14px;
+  }
+
+  #ingredients-section { order: 1; margin-bottom: 0; }
+  #recipes-section { order: 2; min-height: 0; }
+  #grocery-section { order: 3; margin-bottom: 0; }
+  #mealplan-section { order: 4; }
+
+  .recipe-toolbar {
+    padding: 0 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .recipe-filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .recipe-list {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .collapse-toggle {
+    margin-left: auto;
+  }
+
+  .panel-head-actions {
+    width: auto;
+    margin-left: auto;
+  }
+}
+
+
+/* v4.1 desktop collapse and spacing fixes */
+.layout {
+  gap: 14px 18px;
+  grid-auto-rows: max-content;
+}
+
+#ingredients-section,
+#grocery-section,
+#mealplan-section {
+  margin: 0;
+  align-self: start;
+}
+
+.layout.recipes-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+#recipes-section.collapsed {
+  min-height: calc(100vh - 110px);
+}
+
+#recipes-section.collapsed > .section-body {
+  display: none;
+}
+
+#recipes-section.collapsed .panel-head {
+  min-height: 100%;
+  padding: 18px 10px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+#recipes-section.collapsed .panel-head > div:first-child,
+#recipes-section.collapsed .results-meta {
+  display: none;
+}
+
+#recipes-section.collapsed .panel-head::before {
+  content: 'Recipes';
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+#recipes-section.collapsed .panel-head-actions {
+  margin: 0;
+  width: auto;
+}
+
+#recipes-section.collapsed .collapse-toggle {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .layout.recipes-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  #recipes-section.collapsed {
+    min-height: 0;
+  }
+
+  #recipes-section.collapsed .panel-head {
+    min-height: auto;
+    padding: 20px 22px 14px;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  #recipes-section.collapsed .panel-head::before {
+    content: none;
+  }
+
+  #recipes-section.collapsed .panel-head > div:first-child {
+    display: block;
+  }
+}
+
+
+/* v4.2 right column wrapper for proper vertical compression */
+.layout {
+  grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.9fr);
+  align-items: start;
+}
+
+.right-column {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+#ingredients-section,
+#grocery-section,
+#mealplan-section {
+  grid-column: auto;
+}
+
+@media (max-width: 720px) {
+  .right-column {
+    display: contents;
+  }
+}
