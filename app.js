@@ -688,10 +688,13 @@ function addRecipeToList(recipeId) {
   if (!recipe) return;
 
   const selectedServings = getSavedRecipeServings(recipeId) || state.activeServings || getRecipeServings(recipe);
+  const itemsToAdd = buildRecipeListItems(recipe, selectedServings).filter((item) => !recipeItemIsSelected(recipe, item));
+  if (!itemsToAdd.length) return;
+
   state.settings.recipeServingSelections[recipeId] = selectedServings;
   state.settings.recipeSelections[recipeId] = (state.settings.recipeSelections[recipeId] || 0) + 1;
 
-  buildRecipeListItems(recipe, selectedServings).forEach((item) => {
+  itemsToAdd.forEach((item) => {
     const itemSelectionKey = `${recipeId}::${item.key}`;
     state.settings.recipeItemSelections[itemSelectionKey] = (state.settings.recipeItemSelections[itemSelectionKey] || 0) + 1;
   });
@@ -811,10 +814,12 @@ function clearGroceryList() {
   state.settings.manualGroceryItems = {};
   state.settings.recipeItemSelections = {};
   state.settings.recipeServingSelections = {};
+  state.activeRecipe = null;
+  state.activeServings = 4;
+  closeRecipeModal();
   saveSettings();
   renderGroceryList();
   renderRecipes();
-  if (state.activeRecipe) openRecipeModal(state.activeRecipe.id);
 }
 
 function getGroceryAggregation() {
