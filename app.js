@@ -1302,104 +1302,43 @@ function renderRecipeModal() {
   tabActions.append(addAllBtn, planBtn);
   el.tabGrocery.appendChild(tabActions);
 
-     const list = document.createElement('ul');
-  list.className = 'action-ingredients-list';
+ const list = document.createElement('ul');
+list.className = 'action-ingredients-list';
 
-  const modalItems =
-    (activeRecipe.groceryItems || []).some(item => item.trackPantry)
-      ? (activeRecipe.groceryItems || [])
-      : (activeRecipe.pantryTrackableItems || []);
+const modalItems =
+  (activeRecipe.groceryItems || []).some(item => item.trackPantry)
+    ? (activeRecipe.groceryItems || [])
+    : (activeRecipe.pantryTrackableItems || []);
 
-  modalItems.forEach((itemDef) => {
-    const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
-    const statusClass = !shortage
-      ? ''
-      : shortage.missing <= 0
-        ? ' have-it'
+modalItems.forEach((itemDef) => {
+  const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
+
+  const item = document.createElement('li');
+
+  const lineWrap = document.createElement('div');
+
+  if (shortage) {
+    const scaledText = formatIngredientLine({
+      quantity: shortage.needed,
+      unit: shortage.unit,
+      name: itemDef.name,
+    });
+
+    const status =
+      shortage.missing <= 0
+        ? 'Have it'
         : shortage.have > 0
-          ? ' partial-have'
-          : ' need-buy';
+          ? `Need ${formatAmount(shortage.missing)} more`
+          : `Need ${formatAmount(shortage.needed)}`;
 
-    const item = document.createElement('li');
-    item.className = `ingredient-action-item${statusClass}`;
+    lineWrap.textContent = `${scaledText} — ${status}`;
+  } else {
+    lineWrap.textContent = itemDef.display || itemDef.name;
+  }
 
-    const lineWrap = document.createElement('div');
-    lineWrap.className = 'ingredient-line-text';
-
-    let helperLine = '';
-    let statusPill = '';
-
-    if (shortage) {
-      const scaledText = formatIngredientLine({
-        quantity: shortage.needed,
-        unit: shortage.unit,
-        name: itemDef.name,
-      });
-
-      helperLine = `
-        <div class="settings-help">
-          Need ${escapeHtml(formatAmount(shortage.needed))} ${escapeHtml(shortage.unit || 'unit')} • Have ${escapeHtml(formatAmount(shortage.have))} • Short ${escapeHtml(formatAmount(shortage.missing))}
-        </div>
-      `;
-
-      if (shortage.missing <= 0) {
-        statusPill = '<span class="have-it-pill">Have it</span>';
-      } else if (shortage.have > 0) {
-        statusPill = `<span class="have-it-pill status-partial">Need ${escapeHtml(formatAmount(shortage.missing))} more</span>`;
-      } else {
-        statusPill = `<span class="have-it-pill status-need">Need ${escapeHtml(formatAmount(shortage.needed))}</span>`;
-      }
-
-      lineWrap.innerHTML = `
-        <div class="ingredient-line-main">
-          <span>${escapeHtml(scaledText)}</span>
-          ${statusPill}
-        </div>
-        ${helperLine}
-      `;
-    } else {
-      lineWrap.innerHTML = `
-        <div class="ingredient-line-main">
-          <span>${escapeHtml(itemDef.display || itemDef.name)}</span>
-          <span class="ready-pill manual">Manual item</span>
-        </div>
-      `;
-    }
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-
-    const exists = itemDef.trackPantry
-      ? groceryItems.some(entry => entry.kind === 'structured' && entry.recipeIds?.includes(activeRecipe.id) && entry.pantryKey === itemDef.pantryKey)
-      : groceryItems.some(entry => entry.kind === 'manual' && entry.recipeIds?.includes(activeRecipe.id) && entry.text === (itemDef.display || itemDef.name));
-
-    btn.className = `${exists ? 'ghost-btn is-added-btn' : 'ghost-btn'} small-btn`;
-
-    if (shortage) {
-      if (shortage.missing <= 0) {
-        btn.textContent = exists ? 'Added' : 'Covered';
-        btn.disabled = !exists;
-      } else {
-        btn.textContent = exists ? 'Added' : 'Add missing';
-      }
-
-      btn.addEventListener('click', () => {
-        if (shortage.missing > 0) addStructuredGroceryItem(activeRecipe, shortage);
-        renderRecipeModal();
-        renderGroceryList();
-      });
-    } else {
-      btn.textContent = exists ? 'Added' : 'Add';
-      btn.addEventListener('click', () => {
-        addManualGroceryItem(activeRecipe, itemDef.display || itemDef.name);
-        renderRecipeModal();
-        renderGroceryList();
-      });
-    }
-
-    item.append(lineWrap, btn);
-    list.appendChild(item);
-  });
+  item.appendChild(lineWrap);
+  list.appendChild(item);
+});
 
   el.tabGrocery.appendChild(list);
 
