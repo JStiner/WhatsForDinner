@@ -528,8 +528,36 @@ function normalizeRecipe(recipe) {
     ? recipe.groceryItems
     : deriveGroceryItemsFromLines(recipe.groceryList || [], ingredientNames);
 
-  const normalizedItems = inferredItems.map((item, index) => normalizeGroceryItem(item, ingredientNames, recipe, index)).filter(Boolean);
-  const pantryTrackableItems = normalizedItems.filter(item => item.trackPantry);
+  const normalizedItems = inferredItems
+    .map((item, index) => normalizeGroceryItem(item, ingredientNames, recipe, index))
+    .filter(Boolean);
+
+  let pantryTrackableItems = normalizedItems.filter(item => item.trackPantry);
+
+  if (!pantryTrackableItems.length) {
+    const fallbackTrackableItems = [];
+
+    CATEGORY_KEYS.forEach(categoryKey => {
+      const items = Array.isArray(recipe.ingredients?.[categoryKey]) ? recipe.ingredients[categoryKey] : [];
+      items.forEach((name, index) => {
+        const normalizedName = String(name || '').trim();
+        if (!normalizedName) return;
+
+        fallbackTrackableItems.push({
+          id: `${recipe.id}-fallback-${categoryKey}-${index}-${slugify(normalizedName)}`,
+          kind: 'structured',
+          quantity: 1,
+          unit: 'count',
+          name: normalizedName,
+          display: normalizedName,
+          pantryKey: normalizeIngredient(normalizedName),
+          trackPantry: true,
+        });
+      });
+    });
+
+    pantryTrackableItems = fallbackTrackableItems;
+  }
 
   return {
     ...recipe,
