@@ -43,6 +43,42 @@ const CATEGORY_DEFS = [
 
 const CATEGORY_KEYS = CATEGORY_DEFS.map(category => category.key);
 
+const APP_DEFAULTS = {
+  branding: {
+    title: 'What the !#$%&@ is for Dinner?',
+    tagline: 'Tonight’s plan starts here',
+  },
+  themes: [
+    { id: 'citrus', name: 'Citrus Pop' },
+    { id: 'garden', name: 'Fresh Garden' },
+    { id: 'berry', name: 'Berry Bright' },
+    { id: 'midnight', name: 'Midnight Kitchen' },
+  ],
+  defaultTheme: 'citrus',
+  ingredients: {},
+};
+
+const CATEGORY_SLUG_TO_UI_KEY = {
+  meat: 'meats',
+  meats: 'meats',
+  protein: 'meats',
+  veggie: 'veggies',
+  veggies: 'veggies',
+  vegetable: 'veggies',
+  vegetables: 'veggies',
+  grain: 'grains',
+  grains: 'grains',
+  dairy: 'dairy',
+  spice: 'spices',
+  spices: 'spices',
+  sauce: 'sauces',
+  sauces: 'sauces',
+  bakery: 'bakery',
+  pantry: 'pantry',
+  other: 'pantry',
+};
+
+
 const UNIT_ALIASES = {
   '': 'count',
   count: 'count',
@@ -100,13 +136,23 @@ let sectionState = {
 };
 let activeRecipeFile = 'all';
 let recipeFileOptions = [];
+let currentSession = null;
+let currentUser = null;
+let currentRoles = [];
+let authSubscription = null;
 
 const el = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   cacheElements();
   bindStaticEvents();
-  await initializeApp();
+  try {
+    await initializeApp();
+  } catch (error) {
+    console.error('App initialization failed:', error);
+    if (el.matchSummary) el.matchSummary.textContent = 'App failed to load. Check Supabase setup and browser console.';
+    if (el.resultsCount) el.resultsCount.textContent = 'Load failed';
+  }
 });
 
 function cacheElements() {
@@ -134,9 +180,23 @@ function cacheElements() {
   el.taglineInput = document.getElementById('tagline-input');
   el.settingsNav = document.getElementById('settings-nav-dynamic');
   el.settingsCategoryPages = document.getElementById('settings-category-pages');
+  el.accountBtn = document.getElementById('account-btn');
+  el.logoutBtn = document.getElementById('logout-btn');
+  el.accountStatus = document.getElementById('account-status');
+  el.loginModal = document.getElementById('login-modal');
+  el.loginEmail = document.getElementById('login-email');
+  el.loginPassword = document.getElementById('login-password');
+  el.loginSubmit = document.getElementById('login-submit-btn');
+  el.forgotPasswordBtn = document.getElementById('forgot-password-btn');
+  el.loginMessage = document.getElementById('login-message');
 }
 
 function bindStaticEvents() {
+  el.accountBtn?.addEventListener('click', openLoginModal);
+  el.logoutBtn?.addEventListener('click', signOutCurrentUser);
+  el.loginSubmit?.addEventListener('click', signInWithEmailPassword);
+  el.forgotPasswordBtn?.addEventListener('click', sendPasswordReset);
+
   document.getElementById('clear-filters-btn')?.addEventListener('click', () => {
     pantryCounts = {};
     persistPantry();
@@ -175,6 +235,10 @@ function bindStaticEvents() {
     node.addEventListener('click', closeSettingsModal);
   });
 
+  document.querySelectorAll('[data-close-login="true"]').forEach(node => {
+    node.addEventListener('click', closeLoginModal);
+  });
+
   document.querySelectorAll('.modal-tabs .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => setRecipeModalTab(btn.dataset.tab));
   });
@@ -211,55 +275,159 @@ function bindStaticEvents() {
     if (event.key === 'Escape') {
       closeRecipeModal();
       closeSettingsModal();
+      closeLoginModal();
     }
   });
 }
 
 async function initializeApp() {
-  const siteResponse = await fetch('data/site.json').then(r => r.json());
-  const ingredientCatalog = await loadIngredientCatalog();
-  siteConfig = buildSiteConfig(siteResponse, readStoredSiteConfig(), ingredientCatalog);
-  const { loadedRecipes, recipeFiles } = await loadRecipeFiles();
+  const { ingredientCatalog, loadedRecipes, recipeFiles, appSettings } = await loadAppDataFromSupabase();
+  siteConfig = buildSiteConfig({
+    ...APP_DEFAULTS,
+    branding: {
+      title: appSettings?.title || APP_DEFAULTS.branding.title,
+      tagline: appSettings?.tagline || APP_DEFAULTS.branding.tagline,
+    },
+    defaultTheme: appSettings?.default_theme || APP_DEFAULTS.defaultTheme,
+  }, readStoredSiteConfig(), ingredientCatalog);
 
   recipeFileOptions = recipeFiles;
   recipes = loadedRecipes.map(recipe => normalizeRecipe(recipe)).filter(Boolean);
 
   pantryCounts = migratePantryStore(readJson(STORAGE_KEYS.pantry, {}));
-  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
-  persistPantry();
-
   groceryItems = migrateGroceryStore(readJson(STORAGE_KEYS.grocery, []));
   mealPlan = migrateMealPlanStore(readJson(STORAGE_KEYS.mealPlan, []));
   sectionState = { ...sectionState, ...(readJson(STORAGE_KEYS.sections, {}) || {}) };
   currentTheme = localStorage.getItem(STORAGE_KEYS.theme) || siteConfig.defaultTheme || 'citrus';
 
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
   enrichIngredientProfiles();
   applyBranding();
   applyTheme(currentTheme);
   populateRecipeFileFilter();
   renderAll();
+
+  await initializeAuth();
 }
 
-async function loadIngredientCatalog() {
-  const entries = await Promise.all(CATEGORY_DEFS.map(async (category) => {
-    try {
-      const response = await fetch(`data/ingredients/${category.key}.json`);
-      if (!response.ok) throw new Error('missing ingredient file');
-      const items = await response.json();
-      return [category.key, items];
-    } catch {
-      return [category.key, []];
-    }
-  }));
+async function loadAppDataFromSupabase() {
+  const supabase = window.supabaseClient;
+  if (!supabase) {
+    throw new Error('Supabase client not found. Check index.html initialization.');
+  }
 
-  return Object.fromEntries(entries.map(([key, items]) => [
-    key,
-    (Array.isArray(items) ? items : []).map(item => ({
-      id: item.id || slugify(item.name),
-      name: item.name,
-      pantryUnit: item.pantryUnit || item.unit || '',
-    })),
-  ]));
+  const [recipesResult, stepsResult, recipeIngredientsResult, ingredientsResult, ingredientCategoriesResult, appSettingsResult] = await Promise.all([
+    supabase.from('recipes').select('*').eq('is_active', true).order('name', { ascending: true }),
+    supabase.from('recipe_steps').select('*').order('step_number', { ascending: true }),
+    supabase.from('recipe_ingredients').select('*').order('sort_order', { ascending: true }),
+    supabase.from('ingredients').select('*').eq('is_active', true).order('name', { ascending: true }),
+    supabase.from('ingredient_categories').select('*').order('sort_order', { ascending: true }),
+    supabase.from('app_settings').select('*').eq('id', 'global').maybeSingle(),
+  ]);
+
+  if (recipesResult.error) throw recipesResult.error;
+  if (stepsResult.error) throw stepsResult.error;
+  if (recipeIngredientsResult.error) throw recipeIngredientsResult.error;
+  if (ingredientsResult.error) throw ingredientsResult.error;
+  if (ingredientCategoriesResult.error) throw ingredientCategoriesResult.error;
+  if (appSettingsResult.error) throw appSettingsResult.error;
+
+  const recipesData = recipesResult.data || [];
+  const stepsData = stepsResult.data || [];
+  const recipeIngredientsData = recipeIngredientsResult.data || [];
+  const ingredientsData = ingredientsResult.data || [];
+  const ingredientCategoriesData = ingredientCategoriesResult.data || [];
+
+  const ingredientCategoryById = Object.fromEntries(ingredientCategoriesData.map(category => [category.id, category]));
+  const ingredientsById = Object.fromEntries(ingredientsData.map(ingredient => [ingredient.id, ingredient]));
+
+  const ingredientCatalog = CATEGORY_KEYS.reduce((acc, key) => {
+    acc[key] = [];
+    return acc;
+  }, {});
+
+  ingredientsData.forEach(ingredient => {
+    const category = ingredientCategoryById[ingredient.ingredient_category_id];
+    const uiKey = CATEGORY_SLUG_TO_UI_KEY[category?.slug] || 'pantry';
+    ingredientCatalog[uiKey].push({
+      id: ingredient.slug || ingredient.id,
+      name: ingredient.name,
+      pantryUnit: ingredient.default_unit || '',
+    });
+  });
+
+  Object.values(ingredientCatalog).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+
+  const stepsByRecipeId = {};
+  stepsData.forEach(step => {
+    if (!stepsByRecipeId[step.recipe_id]) stepsByRecipeId[step.recipe_id] = [];
+    stepsByRecipeId[step.recipe_id].push(step);
+  });
+
+  const recipeIngredientsByRecipeId = {};
+  recipeIngredientsData.forEach(item => {
+    if (!recipeIngredientsByRecipeId[item.recipe_id]) recipeIngredientsByRecipeId[item.recipe_id] = [];
+    recipeIngredientsByRecipeId[item.recipe_id].push(item);
+  });
+
+  const loadedRecipes = recipesData.map(recipeRow => {
+    const ingredientBuckets = CATEGORY_KEYS.reduce((acc, key) => {
+      acc[key] = [];
+      return acc;
+    }, {});
+
+    const recipeIngredientRows = recipeIngredientsByRecipeId[recipeRow.id] || [];
+
+    recipeIngredientRows.forEach(recipeIngredient => {
+      const ingredient = ingredientsById[recipeIngredient.ingredient_id];
+      if (!ingredient) return;
+      const category = ingredientCategoryById[ingredient.ingredient_category_id];
+      const uiKey = CATEGORY_SLUG_TO_UI_KEY[category?.slug] || 'pantry';
+      if (!ingredientBuckets[uiKey].includes(ingredient.name)) {
+        ingredientBuckets[uiKey].push(ingredient.name);
+      }
+    });
+
+    Object.values(ingredientBuckets).forEach(list => list.sort((a, b) => a.localeCompare(b)));
+
+    const directions = (stepsByRecipeId[recipeRow.id] || [])
+      .sort((a, b) => a.step_number - b.step_number)
+      .map(step => step.instruction);
+
+	return {
+	  id: recipeRow.slug,
+	  name: recipeRow.name,
+	  description: recipeRow.description || '',
+	  time: recipeRow.time_label || '',
+	  difficulty: recipeRow.difficulty || '',
+	  servings: Number(recipeRow.default_servings) || 4,
+	  ingredients: ingredientBuckets,
+	  groceryList: recipeIngredientRows.map(item => item.display_text).filter(Boolean),
+	  directions,
+	  sourceFile: recipeRow.source_group || 'all',
+	  sourceLabel: recipeRow.source_label || humanizeRecipeFileName(recipeRow.source_group || 'all'),
+	};
+  });
+
+		const recipeGroupMap = new Map();
+
+		recipesData.forEach(recipe => {
+		  const value = recipe.source_group || 'all';
+		  const label = recipe.source_label || humanizeRecipeFileName(value);
+		  if (value !== 'all' && !recipeGroupMap.has(value)) {
+			recipeGroupMap.set(value, { value, label });
+		  }
+		});
+
+		return {
+		  ingredientCatalog,
+		  loadedRecipes,
+		  recipeFiles: [
+			{ value: 'all', label: 'All recipes' },
+			...Array.from(recipeGroupMap.values()).sort((a, b) => a.label.localeCompare(b.label)),
+		  ],
+		  appSettings: appSettingsResult.data || null,
+		};
 }
 
 function getIngredientDefaultStock(category, itemName) {
@@ -292,6 +460,7 @@ function applyStockDefaults(currentPantryCounts, ingredientsByCategory) {
 function persistStockSettings() {
   localStorage.setItem(STORAGE_KEYS.stockDefaults, JSON.stringify(categoryStockDefaults));
   localStorage.setItem(STORAGE_KEYS.stockOverrides, JSON.stringify(ingredientStockOverrides));
+  queueSaveUserPreferences();
 }
 
 function cycleIngredientStockOverride(itemName) {
@@ -322,37 +491,6 @@ function setCategoryStockDefault(categoryKey, isAlwaysStocked) {
   renderAll();
 }
 
-async function loadRecipeFiles() {
-  try {
-    const indexResponse = await fetch('data/recipes/recipe_index.json');
-    if (!indexResponse.ok) throw new Error('missing recipe index');
-    const recipeIndex = await indexResponse.json();
-    const files = recipeIndex.files || [];
-    const recipeFiles = files.map(fileName => ({
-      value: fileName,
-      label: humanizeRecipeFileName(fileName),
-    }));
-
-    const recipeFilePromises = files.map(async (fileName) => {
-      const fileResponse = await fetch(`data/recipes/${fileName}`);
-      const fileRecipes = await fileResponse.json();
-      return fileRecipes.map(recipe => ({
-        ...recipe,
-        sourceFile: fileName,
-        sourceLabel: humanizeRecipeFileName(fileName),
-      }));
-    });
-
-    const loadedRecipeArrays = await Promise.all(recipeFilePromises);
-    return { loadedRecipes: loadedRecipeArrays.flat(), recipeFiles };
-  } catch {
-    const fallbackRecipes = await fetch('data/recipes.json').then(r => r.json());
-    return {
-      loadedRecipes: fallbackRecipes.map(recipe => ({ ...recipe, sourceFile: 'recipes.json', sourceLabel: 'All recipes' })),
-      recipeFiles: [{ value: 'recipes.json', label: 'All recipes' }],
-    };
-  }
-}
 
 function humanizeRecipeFileName(fileName) {
   return String(fileName || 'recipes')
@@ -642,14 +780,17 @@ function persistSiteConfig() {
 
 function persistPantry() {
   localStorage.setItem(STORAGE_KEYS.pantry, JSON.stringify(pantryCounts));
+  queueSaveUserPantry();
 }
 
 function persistGrocery() {
   localStorage.setItem(STORAGE_KEYS.grocery, JSON.stringify(groceryItems));
+  queueSaveUserGrocery();
 }
 
 function persistMealPlan() {
   localStorage.setItem(STORAGE_KEYS.mealPlan, JSON.stringify(mealPlan));
+  queueSaveUserMealPlan();
 }
 
 function applyBranding() {
@@ -664,6 +805,7 @@ function applyTheme(themeId) {
   }
   currentTheme = themeId;
   localStorage.setItem(STORAGE_KEYS.theme, themeId);
+  queueSaveUserPreferences();
 }
 
 function renderAll() {
@@ -677,6 +819,7 @@ function renderAll() {
 
 function persistSectionState() {
   localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(sectionState));
+  queueSaveUserPreferences();
 }
 
 function toggleSection(sectionKey) {
@@ -1597,6 +1740,14 @@ function addMealPlanShortagesToGrocery() {
 }
 
 function openSettingsModal() {
+  if (!canEditSharedData()) {
+    if (!currentUser) {
+      openLoginModal('Sign in as an editor or admin to access settings.');
+    } else {
+      setAccountMessage('Your account can use pantry, grocery list, and meal plan, but shared cookbook settings are read-only.', false);
+    }
+    return;
+  }
   renderSettingsForm();
   if (!el.settingsModal) return;
   el.settingsModal.classList.remove('hidden');
@@ -1748,6 +1899,9 @@ function renderManageList(category, container) {
 
       persistSiteConfig();
       persistPantry();
+      saveSharedIngredient(siteConfig.ingredients[category][index], category)
+        .then(() => refreshSharedCatalog())
+        .catch(error => { console.error('Rename failed:', error); setAccountMessage('Rename failed.', true); });
       renderAll();
     });
 
@@ -1760,6 +1914,9 @@ function renderManageList(category, container) {
       if (!nextUnit) return;
       siteConfig.ingredients[category][index] = { ...item, pantryUnit: normalizeUnit(nextUnit) };
       persistSiteConfig();
+      saveSharedIngredient(siteConfig.ingredients[category][index], category)
+        .then(() => refreshSharedCatalog())
+        .catch(error => { console.error('Unit update failed:', error); setAccountMessage('Unit update failed.', true); });
       renderAll();
     });
 
@@ -1790,6 +1947,9 @@ function renderManageList(category, container) {
       persistSiteConfig();
       persistPantry();
       persistStockSettings();
+      deleteSharedIngredient(removed.name)
+        .then(() => refreshSharedCatalog())
+        .catch(error => { console.error('Remove failed:', error); setAccountMessage('Remove failed.', true); });
       renderAll();
     });
 
@@ -1820,16 +1980,41 @@ function addIngredient(category) {
 
   pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
 
+  const createdItem = siteConfig.ingredients[category].find(item => normalizeIngredient(item.name) === normalizeIngredient(value));
+
   input.value = '';
   persistSiteConfig();
   persistPantry();
+  if (createdItem && canEditSharedData()) {
+    saveSharedIngredient(createdItem, category)
+      .then(() => refreshSharedCatalog())
+     .catch(error => {
+  console.error('Add ingredient failed:', error);
+  setAccountMessage(`Add ingredient failed: ${error?.message || 'Unknown error'}`, true);
+});
+  }
   renderAll();
 }
 
-function saveSettings() {
+async function saveSettings() {
   siteConfig.branding.title = el.titleInput?.value.trim() || 'What the !#$%&@ is for Dinner?';
   siteConfig.branding.tagline = el.taglineInput?.value.trim() || 'Tonight’s plan starts here';
   persistSiteConfig();
+
+  if (canEditSharedData()) {
+    const { error } = await window.supabaseClient.from('app_settings').upsert({
+      id: 'global',
+      title: siteConfig.branding.title,
+      tagline: siteConfig.branding.tagline,
+      default_theme: siteConfig.defaultTheme || 'citrus',
+    });
+    if (error) {
+      console.error('Failed to save app settings:', error);
+      setAccountMessage('Failed to save shared settings.', true);
+      return;
+    }
+  }
+
   applyBranding();
   renderAll();
   closeSettingsModal();
@@ -1850,16 +2035,328 @@ function resetSettings() {
   groceryItems = [];
   mealPlan = [];
 
-  Promise.all([fetch('data/site.json').then(r => r.json()), loadIngredientCatalog()])
-    .then(([defaultConfig, ingredientCatalog]) => {
-      siteConfig = buildSiteConfig(defaultConfig, null, ingredientCatalog);
+  loadAppDataFromSupabase()
+    .then(({ ingredientCatalog, appSettings }) => {
+      siteConfig = buildSiteConfig({
+        ...APP_DEFAULTS,
+        branding: {
+          title: appSettings?.title || APP_DEFAULTS.branding.title,
+          tagline: appSettings?.tagline || APP_DEFAULTS.branding.tagline,
+        },
+        defaultTheme: appSettings?.default_theme || APP_DEFAULTS.defaultTheme,
+      }, null, ingredientCatalog);
       pantryCounts = applyStockDefaults({}, siteConfig.ingredients);
       persistPantry();
       enrichIngredientProfiles();
       applyTheme(siteConfig.defaultTheme || 'citrus');
       applyBranding();
       renderAll();
+    })
+    .catch(error => {
+      console.error('Reset failed while loading Supabase data:', error);
     });
+}
+
+async function initializeAuth() {
+  const supabase = window.supabaseClient;
+  if (!supabase) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  await applyAuthSession(session);
+
+  authSubscription?.subscription?.unsubscribe?.();
+  const { data } = supabase.auth.onAuthStateChange((_event, sessionUpdate) => {
+    applyAuthSession(sessionUpdate).catch(error => console.error('Auth state refresh failed:', error));
+  });
+  authSubscription = data;
+}
+
+async function applyAuthSession(session) {
+  currentSession = session || null;
+  currentUser = session?.user || null;
+  currentRoles = currentUser ? await fetchCurrentUserRoles() : [];
+
+  if (currentUser) {
+    await loadUserStateFromSupabase();
+  } else {
+    pantryCounts = migratePantryStore(readJson(STORAGE_KEYS.pantry, {}));
+    groceryItems = migrateGroceryStore(readJson(STORAGE_KEYS.grocery, []));
+    mealPlan = migrateMealPlanStore(readJson(STORAGE_KEYS.mealPlan, []));
+    sectionState = { ...sectionState, ...(readJson(STORAGE_KEYS.sections, {}) || {}) };
+    categoryStockDefaults = { ...BASE_CATEGORY_DEFAULTS, ...(readJson(STORAGE_KEYS.stockDefaults, {}) || {}) };
+    ingredientStockOverrides = readJson(STORAGE_KEYS.stockOverrides, {}) || {};
+    currentTheme = localStorage.getItem(STORAGE_KEYS.theme) || siteConfig.defaultTheme || 'citrus';
+    applyTheme(currentTheme);
+  }
+
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  refreshAuthUi();
+  renderAll();
+}
+
+async function fetchCurrentUserRoles() {
+  const { data, error } = await window.supabaseClient.from('user_roles').select('role').eq('user_id', currentUser.id);
+  if (error) {
+    console.error('Failed to load roles:', error);
+    return [];
+  }
+  return (data || []).map(item => item.role);
+}
+
+async function loadUserStateFromSupabase() {
+  const [pantryResult, groceryResult, mealPlanResult, prefsResult] = await Promise.all([
+    window.supabaseClient.from('user_pantry').select('pantry_key, quantity').order('pantry_key', { ascending: true }),
+    window.supabaseClient.from('user_grocery_items').select('sort_order, item').order('sort_order', { ascending: true }),
+    window.supabaseClient.from('user_meal_plan').select('sort_order, recipe_id, servings').order('sort_order', { ascending: true }),
+    window.supabaseClient.from('user_ui_preferences').select('*').maybeSingle(),
+  ]);
+
+  if (pantryResult.error) console.error('Failed to load pantry:', pantryResult.error);
+  if (groceryResult.error) console.error('Failed to load grocery list:', groceryResult.error);
+  if (mealPlanResult.error) console.error('Failed to load meal plan:', mealPlanResult.error);
+  if (prefsResult.error) console.error('Failed to load preferences:', prefsResult.error);
+
+  pantryCounts = Object.fromEntries((pantryResult.data || []).map(row => [row.pantry_key, Number(row.quantity) || 0]));
+  groceryItems = (groceryResult.data || []).map(row => row.item).filter(Boolean);
+  mealPlan = (mealPlanResult.data || []).map(row => ({ recipeId: row.recipe_id, servings: Number(row.servings) || 4 }));
+
+  const prefs = prefsResult.data || {};
+  if (prefs.section_state && typeof prefs.section_state === 'object') sectionState = { ...sectionState, ...prefs.section_state };
+  if (prefs.stock_defaults && typeof prefs.stock_defaults === 'object') categoryStockDefaults = { ...BASE_CATEGORY_DEFAULTS, ...prefs.stock_defaults };
+  if (prefs.stock_overrides && typeof prefs.stock_overrides === 'object') ingredientStockOverrides = prefs.stock_overrides;
+  if (prefs.theme) currentTheme = prefs.theme;
+
+  localStorage.setItem(STORAGE_KEYS.pantry, JSON.stringify(pantryCounts));
+  localStorage.setItem(STORAGE_KEYS.grocery, JSON.stringify(groceryItems));
+  localStorage.setItem(STORAGE_KEYS.mealPlan, JSON.stringify(mealPlan));
+  localStorage.setItem(STORAGE_KEYS.sections, JSON.stringify(sectionState));
+  localStorage.setItem(STORAGE_KEYS.stockDefaults, JSON.stringify(categoryStockDefaults));
+  localStorage.setItem(STORAGE_KEYS.stockOverrides, JSON.stringify(ingredientStockOverrides));
+  if (currentTheme) localStorage.setItem(STORAGE_KEYS.theme, currentTheme);
+  applyTheme(currentTheme || siteConfig.defaultTheme || 'citrus');
+}
+
+function canEditSharedData() {
+  return currentRoles.includes('admin') || currentRoles.includes('editor');
+}
+
+function refreshAuthUi() {
+  if (el.accountStatus) {
+    const roleLabel = currentRoles.length ? ` (${currentRoles.join(', ')})` : '';
+    el.accountStatus.textContent = currentUser ? `${currentUser.email}${roleLabel}` : 'Browsing recipes';
+    el.accountStatus.classList.remove('account-error');
+  }
+  if (el.accountBtn) el.accountBtn.textContent = currentUser ? 'Account' : 'Log in';
+  if (el.logoutBtn) el.logoutBtn.classList.toggle('hidden', !currentUser);
+  if (document.getElementById('settings-btn')) {
+    document.getElementById('settings-btn').classList.toggle('hidden', !canEditSharedData());
+    document.getElementById('settings-btn').disabled = !canEditSharedData();
+  }
+}
+
+function openLoginModal(message = '') {
+  if (currentUser) {
+    setAccountMessage(`Signed in as ${currentUser.email}.`, false);
+    return;
+  }
+  if (el.loginMessage) {
+    el.loginMessage.textContent = message;
+    el.loginMessage.classList.remove('account-error');
+  }
+  el.loginModal?.classList.remove('hidden');
+  el.loginModal?.setAttribute('aria-hidden', 'false');
+}
+
+function closeLoginModal() {
+  el.loginModal?.classList.add('hidden');
+  el.loginModal?.setAttribute('aria-hidden', 'true');
+}
+
+function setAccountMessage(message, isError = false) {
+  if (el.accountStatus) {
+    el.accountStatus.textContent = message;
+    el.accountStatus.classList.toggle('account-error', Boolean(isError));
+  }
+  if (el.loginMessage) {
+    el.loginMessage.textContent = message;
+    el.loginMessage.classList.toggle('account-error', Boolean(isError));
+  }
+}
+
+async function signInWithEmailPassword() {
+  const email = el.loginEmail?.value?.trim();
+  const password = el.loginPassword?.value || '';
+  if (!email || !password) {
+    setAccountMessage('Enter your email and password.', true);
+    return;
+  }
+  const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    console.error('Login failed:', error);
+    setAccountMessage(error.message || 'Login failed.', true);
+    return;
+  }
+  closeLoginModal();
+}
+
+async function signOutCurrentUser() {
+  const { error } = await window.supabaseClient.auth.signOut();
+  if (error) {
+    console.error('Logout failed:', error);
+    setAccountMessage('Logout failed.', true);
+  }
+}
+
+async function sendPasswordReset() {
+  const email = el.loginEmail?.value?.trim();
+  if (!email) {
+    setAccountMessage('Enter your email address first.', true);
+    return;
+  }
+  const redirectTo = `${window.location.origin}${window.location.pathname.replace(/[^/]+$/, '')}reset-password.html`;
+  const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) {
+    console.error('Password reset failed:', error);
+    setAccountMessage(error.message || 'Failed to send password reset.', true);
+    return;
+  }
+  setAccountMessage('Password reset email sent.', false);
+}
+
+let pantrySavePromise = Promise.resolve();
+let grocerySavePromise = Promise.resolve();
+let mealPlanSavePromise = Promise.resolve();
+let prefSavePromise = Promise.resolve();
+
+function queueSaveUserPantry() {
+  if (!currentUser) return;
+  pantrySavePromise = pantrySavePromise.then(async () => {
+    const { error: deleteError } = await window.supabaseClient.from('user_pantry').delete().eq('user_id', currentUser.id);
+    if (deleteError) return console.error('Failed clearing pantry rows:', deleteError);
+    const rows = Object.entries(pantryCounts)
+      .filter(([, quantity]) => Number(quantity) > 0)
+      .map(([pantry_key, quantity]) => ({ user_id: currentUser.id, pantry_key, quantity }));
+    if (!rows.length) return;
+    const { error } = await window.supabaseClient.from('user_pantry').insert(rows);
+    if (error) console.error('Failed saving pantry rows:', error);
+  });
+}
+
+function queueSaveUserGrocery() {
+  if (!currentUser) return;
+  grocerySavePromise = grocerySavePromise.then(async () => {
+    const { error: deleteError } = await window.supabaseClient.from('user_grocery_items').delete().eq('user_id', currentUser.id);
+    if (deleteError) return console.error('Failed clearing grocery rows:', deleteError);
+    const rows = groceryItems.map((item, index) => ({ user_id: currentUser.id, sort_order: index, item }));
+    if (!rows.length) return;
+    const { error } = await window.supabaseClient.from('user_grocery_items').insert(rows);
+    if (error) console.error('Failed saving grocery rows:', error);
+  });
+}
+
+function queueSaveUserMealPlan() {
+  if (!currentUser) return;
+  mealPlanSavePromise = mealPlanSavePromise.then(async () => {
+    const { error: deleteError } = await window.supabaseClient.from('user_meal_plan').delete().eq('user_id', currentUser.id);
+    if (deleteError) return console.error('Failed clearing meal plan rows:', deleteError);
+    const rows = mealPlan.map((item, index) => ({ user_id: currentUser.id, sort_order: index, recipe_id: item.recipeId, servings: item.servings }));
+    if (!rows.length) return;
+    const { error } = await window.supabaseClient.from('user_meal_plan').insert(rows);
+    if (error) console.error('Failed saving meal plan rows:', error);
+  });
+}
+
+function queueSaveUserPreferences() {
+  if (!currentUser) return;
+  prefSavePromise = prefSavePromise.then(async () => {
+    const payload = {
+      user_id: currentUser.id,
+      theme: currentTheme,
+      section_state: sectionState,
+      stock_defaults: categoryStockDefaults,
+      stock_overrides: ingredientStockOverrides,
+    };
+    const { error } = await window.supabaseClient.from('user_ui_preferences').upsert(payload);
+    if (error) console.error('Failed saving user preferences:', error);
+  });
+}
+
+async function saveSharedIngredient(item, categoryKey) {
+  const categorySlug = uiCategoryToDbSlug(categoryKey);
+
+  const { data: category, error: categoryError } = await window.supabaseClient
+    .from('ingredient_categories')
+    .select('id')
+    .eq('slug', categorySlug)
+    .maybeSingle();
+
+  if (categoryError || !category) {
+    throw categoryError || new Error(`Missing ingredient category: ${categorySlug}`);
+  }
+
+  const slug = slugify(item.name);
+
+  const { data: existing, error: existingError } = await window.supabaseClient
+    .from('ingredients')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  const payload = {
+    name: item.name,
+    slug,
+    ingredient_category_id: category.id,
+    default_unit: item.pantryUnit || '',
+    is_active: true,
+  };
+
+  if (existing?.id) {
+    const { error } = await window.supabaseClient
+      .from('ingredients')
+      .update(payload)
+      .eq('id', existing.id);
+
+    if (error) throw error;
+  } else {
+    const { error } = await window.supabaseClient
+      .from('ingredients')
+      .insert(payload);
+
+    if (error) throw error;
+  }
+}
+
+async function deleteSharedIngredient(itemName) {
+  const { error } = await window.supabaseClient.from('ingredients').delete().eq('slug', slugify(itemName));
+  if (error) throw error;
+}
+
+function uiCategoryToDbSlug(categoryKey) {
+  const map = { meats: 'meat', veggies: 'veggie', grains: 'grain', dairy: 'dairy', spices: 'spice', sauces: 'sauce', bakery: 'bakery', pantry: 'pantry' };
+  return map[categoryKey] || 'other';
+}
+
+async function refreshSharedCatalog() {
+  const { ingredientCatalog, loadedRecipes, recipeFiles, appSettings } = await loadAppDataFromSupabase();
+  siteConfig = buildSiteConfig({
+    ...APP_DEFAULTS,
+    branding: {
+      title: appSettings?.title || APP_DEFAULTS.branding.title,
+      tagline: appSettings?.tagline || APP_DEFAULTS.branding.tagline,
+    },
+    defaultTheme: appSettings?.default_theme || APP_DEFAULTS.defaultTheme,
+  }, readStoredSiteConfig(), ingredientCatalog);
+  recipeFileOptions = recipeFiles;
+  recipes = loadedRecipes.map(recipe => normalizeRecipe(recipe)).filter(Boolean);
+  pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  enrichIngredientProfiles();
+  applyBranding();
+  populateRecipeFileFilter();
+  renderAll();
 }
 
 function getRecipeIngredientNames(recipe) {

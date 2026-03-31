@@ -1535,3 +1535,30 @@ body.theme-midnight .ingredient-action-item.need-buy {
   color: var(--muted);
   text-align: left;
 }
+
+.account-status {
+  font-size: 0.9rem;
+  color: var(--muted, #666);
+}
+
+.account-error {
+  color: #b42318 !important;
+}
+
+.auth-card {
+  max-width: 440px;
+}
+
+.auth-body {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-body label {
+  display: grid;
+  gap: 6px;
+}
+
+.hidden {
+  display: none !important;
+}
