@@ -125,6 +125,7 @@ const UNIT_ALIASES = {
 let recipes = [];
 let siteConfig = null;
 let currentTheme = 'citrus';
+let currentSettingsTab = 'general';
 let currentPage = 1;
 let activeRecipe = null;
 let activeRecipeServings = 4;
@@ -206,6 +207,26 @@ function bindStaticEvents() {
     persistPantry();
     currentPage = 1;
     renderAll();
+  });
+
+  document.getElementById('collapse-all-ingredients-btn')?.addEventListener('click', () => {
+    CATEGORY_KEYS.forEach(key => {
+      sectionState[`ingredients-${key}`] = true;
+    });
+    persistSectionState();
+    renderSectionState();
+  });
+
+  document.getElementById('expand-all-ingredients-btn')?.addEventListener('click', () => {
+    CATEGORY_KEYS.forEach(key => {
+      sectionState[`ingredients-${key}`] = false;
+    });
+    persistSectionState();
+    renderSectionState();
+  });
+
+  el.settingsModal?.querySelector('.modal-card')?.addEventListener('click', (event) => {
+    event.stopPropagation();
   });
 
   document.getElementById('settings-btn')?.addEventListener('click', openSettingsModal);
@@ -1372,14 +1393,15 @@ modalItems.forEach((itemDef) => {
 }
 
 function getItemShortage(item, scale = 1, remainingPool = null) {
-  const needed = roundAmount((Number(item.quantity) || 0) * scale);
+  const unit = item.unit || 'count';
+  const needed = normalizePurchaseAmount((Number(item.quantity) || 0) * scale, unit);
   const source = remainingPool || pantryCounts;
   const have = Number(source[normalizeIngredient(item.pantryKey)] || 0);
-  const missing = roundAmount(Math.max(0, needed - have));
+  const missing = normalizePurchaseAmount(Math.max(0, needed - have), unit);
   return {
     pantryKey: item.pantryKey,
     name: item.name,
-    unit: item.unit || 'count',
+    unit,
     needed,
     have,
     missing,
@@ -1397,7 +1419,7 @@ function addStructuredGroceryItem(recipe, shortage) {
   );
 
   if (existing) {
-    existing.quantity = roundAmount(existing.quantity + shortage.missing);
+    existing.quantity = normalizePurchaseAmount(existing.quantity + shortage.missing, shortage.unit);
     existing.recipeIds = uniqueArray([...(existing.recipeIds || []), recipe.id]);
     existing.recipeNames = uniqueArray([...(existing.recipeNames || []), recipe.name]);
   } else {
@@ -1485,7 +1507,7 @@ function renderGroceryList() {
 
     if (item.kind === 'structured') {
       left.innerHTML = `
-        <strong>${escapeHtml(formatIngredientLine(item))}</strong>
+        <strong>${escapeHtml(`Buy ${formatIngredientLine(item)}`)}</strong>
         <div class="settings-help">${escapeHtml((item.recipeNames || []).join(', '))}</div>
       `;
     } else {
@@ -1516,7 +1538,7 @@ function renderGroceryList() {
 async function copyShoppingList() {
   const lines = groceryItems.length
     ? groceryItems.map(item => {
-      if (item.kind === 'structured') return `• ${formatIngredientLine(item)} (${(item.recipeNames || []).join(', ')})`;
+      if (item.kind === 'structured') return `• Buy ${formatIngredientLine(item)} (${(item.recipeNames || []).join(', ')})`;
       return `• ${item.text} (${(item.recipeNames || []).join(', ')})`;
     })
     : ['No grocery items added yet.'];
@@ -1691,7 +1713,7 @@ function renderMealPlan() {
 
     const left = document.createElement('div');
     left.className = 'shopping-text';
-    left.innerHTML = `<strong>${escapeHtml(formatIngredientLine(item))}</strong><div class="settings-help">${escapeHtml(item.recipeNames.join(', '))}</div>`;
+    left.innerHTML = `<strong>${escapeHtml(`Buy ${formatIngredientLine(item)}`)}</strong><div class="settings-help">${escapeHtml(item.recipeNames.join(', '))}</div>`;
 
     li.append(left);
     shortageList.appendChild(li);
@@ -1757,11 +1779,12 @@ function closeSettingsModal() {
 }
 
 function setSettingsTab(tabName) {
+  currentSettingsTab = tabName || 'general';
   document.querySelectorAll('.settings-nav-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.settingsTab === tabName);
+    btn.classList.toggle('active', btn.dataset.settingsTab === currentSettingsTab);
   });
   document.querySelectorAll('.settings-page').forEach(page => {
-    page.classList.toggle('active', page.dataset.settingsPage === tabName);
+    page.classList.toggle('active', page.dataset.settingsPage === currentSettingsTab);
   });
 }
 
@@ -1853,6 +1876,8 @@ function renderSettingsCategoryPages() {
     el.settingsCategoryPages.appendChild(page);
     renderManageList(category.key, page.querySelector(`#manage-${category.key}`));
   });
+
+  setSettingsTab(currentSettingsTab);
 }
 
 function renderManageList(category, container) {
@@ -1973,30 +1998,34 @@ function addIngredient(category) {
     return;
   }
 
-  siteConfig.ingredients[category].push({
+  const createdItem = {
     id: slugify(value),
     name: toTitleCase(value),
     pantryUnit: defaultUnitForCategory(category),
-  });
+  };
 
+  siteConfig.ingredients[category].push(createdItem);
   siteConfig.ingredients[category].sort((a, b) => a.name.localeCompare(b.name));
-
   pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
-
-  const createdItem = siteConfig.ingredients[category].find(item => normalizeIngredient(item.name) === normalizeIngredient(value));
 
   input.value = '';
   persistSiteConfig();
   persistPantry();
+  renderAll();
+
   if (createdItem && canEditSharedData()) {
     saveSharedIngredient(createdItem, category)
       .then(() => refreshSharedCatalog())
-     .catch(error => {
-  console.error('Add ingredient failed:', error);
-  setAccountMessage(`Add ingredient failed: ${error?.message || 'Unknown error'}`, true);
-});
+      .catch(error => {
+        console.error('Add ingredient failed:', error);
+        siteConfig.ingredients[category] = (siteConfig.ingredients[category] || []).filter(item => normalizeIngredient(item.name) !== normalizeIngredient(createdItem.name));
+        delete pantryCounts[normalizeIngredient(createdItem.name)];
+        persistSiteConfig();
+        persistPantry();
+        renderAll();
+        setAccountMessage(`Add ingredient failed: ${error?.message || 'Unknown error'}`, true);
+      });
   }
-  renderAll();
 }
 
 async function saveSettings() {
@@ -2289,7 +2318,7 @@ async function saveSharedIngredient(item, categoryKey) {
 
   const { data: category, error: categoryError } = await window.supabaseClient
     .from('ingredient_categories')
-    .select('id')
+    .select('id, slug')
     .eq('slug', categorySlug)
     .maybeSingle();
 
@@ -2297,40 +2326,19 @@ async function saveSharedIngredient(item, categoryKey) {
     throw categoryError || new Error(`Missing ingredient category: ${categorySlug}`);
   }
 
-  const slug = slugify(item.name);
-
-  const { data: existing, error: existingError } = await window.supabaseClient
-    .from('ingredients')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle();
-
-  if (existingError) {
-    throw existingError;
-  }
-
   const payload = {
     name: item.name,
-    slug,
+    slug: slugify(item.name),
     ingredient_category_id: category.id,
     default_unit: item.pantryUnit || '',
     is_active: true,
   };
 
-  if (existing?.id) {
-    const { error } = await window.supabaseClient
-      .from('ingredients')
-      .update(payload)
-      .eq('id', existing.id);
+  const { error } = await window.supabaseClient
+    .from('ingredients')
+    .upsert(payload, { onConflict: 'slug' });
 
-    if (error) throw error;
-  } else {
-    const { error } = await window.supabaseClient
-      .from('ingredients')
-      .insert(payload);
-
-    if (error) throw error;
-  }
+  if (error) throw error;
 }
 
 async function deleteSharedIngredient(itemName) {
@@ -2385,6 +2393,16 @@ function normalizeIngredient(value) {
 function normalizeUnit(unit) {
   const clean = String(unit || '').trim().toLowerCase();
   return UNIT_ALIASES[clean] || clean;
+}
+
+function isWholePurchaseUnit(unit) {
+  return ['count', 'clove', 'can', 'package', 'packet', 'slice', 'bunch'].includes(normalizeUnit(unit));
+}
+
+function normalizePurchaseAmount(value, unit) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return isWholePurchaseUnit(unit) ? Math.ceil(amount) : roundAmount(amount);
 }
 
 function parseNumber(text) {

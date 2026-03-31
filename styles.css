@@ -329,6 +329,34 @@ input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px;
 .ingredient-category-section[data-ingredient-category="sauces"] .ingredient-category-toggle-circle { background: color-mix(in srgb, var(--cat-sauces) 16%, white); border-color: color-mix(in srgb, var(--cat-sauces) 38%, var(--line)); }
 .ingredient-category-section[data-ingredient-category="bakery"] .ingredient-category-toggle-circle { background: color-mix(in srgb, var(--cat-bakery) 18%, white); border-color: color-mix(in srgb, var(--cat-bakery) 38%, var(--line)); }
 .ingredient-category-section[data-ingredient-category="pantry"] .ingredient-category-toggle-circle { background: color-mix(in srgb, var(--cat-pantry) 16%, white); border-color: color-mix(in srgb, var(--cat-pantry) 38%, var(--line)); }
+
+.ingredient-bulk-actions { display: flex; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+
+body.theme-midnight .chip.active,
+body.theme-copper .chip.active {
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.28);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 14px 24px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+body.theme-midnight .collapse-toggle,
+body.theme-copper .collapse-toggle,
+body.theme-midnight .ingredient-category-toggle-circle,
+body.theme-copper .ingredient-category-toggle-circle {
+  border-color: rgba(255,255,255,0.22);
+  color: #f4f6fb;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+body.theme-midnight .collapse-toggle,
+body.theme-copper .collapse-toggle {
+  background: color-mix(in srgb, var(--chip-bg) 82%, white 6%);
+}
+
+body.theme-midnight .ingredient-category-toggle-circle,
+body.theme-copper .ingredient-category-toggle-circle {
+  filter: saturate(1.15) brightness(1.08);
+}
 .ready-pill { background: color-mix(in srgb, var(--accent-4) 16%, transparent); color: color-mix(in srgb, var(--accent-4) 78%, black 18%); }
 .ready-pill.manual, .have-it-pill.status-partial { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: color-mix(in srgb, var(--accent-2) 72%, black 26%); }
 .have-it-pill.status-need, .ingredient-action-item.need-buy { background: color-mix(in srgb, var(--accent) 14%, transparent); color: color-mix(in srgb, var(--accent) 78%, black 18%); }
