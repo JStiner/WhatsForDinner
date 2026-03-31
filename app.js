@@ -1302,10 +1302,23 @@ function renderRecipeModal() {
   tabActions.append(addAllBtn, planBtn);
   el.tabGrocery.appendChild(tabActions);
 
-  const list = document.createElement('ul');
+   const list = document.createElement('ul');
   list.className = 'action-ingredients-list';
 
-  (activeRecipe.groceryItems || []).forEach((itemDef) => {
+  const modalItems =
+    (activeRecipe.groceryItems || []).some(item => item.trackPantry)
+      ? (activeRecipe.groceryItems || [])
+      : (activeRecipe.pantryTrackableItems || []);
+
+  modalItems.forEach((itemDef) => {
+    const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
+
+  const modalItems =
+  (activeRecipe.groceryItems || []).some(item => item.trackPantry)
+    ? (activeRecipe.groceryItems || [])
+    : (activeRecipe.pantryTrackableItems || []);
+
+modalItems.forEach((itemDef) => {
     const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
     const statusClass = !shortage
       ? ''
