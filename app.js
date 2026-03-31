@@ -1302,7 +1302,7 @@ function renderRecipeModal() {
   tabActions.append(addAllBtn, planBtn);
   el.tabGrocery.appendChild(tabActions);
 
-   const list = document.createElement('ul');
+     const list = document.createElement('ul');
   list.className = 'action-ingredients-list';
 
   const modalItems =
@@ -1311,14 +1311,6 @@ function renderRecipeModal() {
       : (activeRecipe.pantryTrackableItems || []);
 
   modalItems.forEach((itemDef) => {
-    const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
-
-  const modalItems =
-  (activeRecipe.groceryItems || []).some(item => item.trackPantry)
-    ? (activeRecipe.groceryItems || [])
-    : (activeRecipe.pantryTrackableItems || []);
-
-modalItems.forEach((itemDef) => {
     const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
     const statusClass = !shortage
       ? ''
@@ -1336,6 +1328,7 @@ modalItems.forEach((itemDef) => {
 
     let helperLine = '';
     let statusPill = '';
+
     if (shortage) {
       const scaledText = formatIngredientLine({
         quantity: shortage.needed,
@@ -1349,9 +1342,13 @@ modalItems.forEach((itemDef) => {
         </div>
       `;
 
-      if (shortage.missing <= 0) statusPill = '<span class="have-it-pill">Have it</span>';
-      else if (shortage.have > 0) statusPill = `<span class="have-it-pill status-partial">Need ${escapeHtml(formatAmount(shortage.missing))} more</span>`;
-      else statusPill = `<span class="have-it-pill status-need">Need ${escapeHtml(formatAmount(shortage.needed))}</span>`;
+      if (shortage.missing <= 0) {
+        statusPill = '<span class="have-it-pill">Have it</span>';
+      } else if (shortage.have > 0) {
+        statusPill = `<span class="have-it-pill status-partial">Need ${escapeHtml(formatAmount(shortage.missing))} more</span>`;
+      } else {
+        statusPill = `<span class="have-it-pill status-need">Need ${escapeHtml(formatAmount(shortage.needed))}</span>`;
+      }
 
       lineWrap.innerHTML = `
         <div class="ingredient-line-main">
