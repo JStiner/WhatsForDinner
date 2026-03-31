@@ -52,6 +52,10 @@ const APP_DEFAULTS = {
     { id: 'citrus', name: 'Citrus Pop' },
     { id: 'garden', name: 'Fresh Garden' },
     { id: 'berry', name: 'Berry Bright' },
+    { id: 'farmhouse', name: 'Farmhouse' },
+    { id: 'diner', name: 'Retro Diner' },
+    { id: 'lemon', name: 'Lemon Kitchen' },
+    { id: 'copper', name: 'Slate & Copper' },
     { id: 'midnight', name: 'Midnight Kitchen' },
   ],
   defaultTheme: 'citrus',
@@ -834,6 +838,20 @@ function applyTheme(themeId) {
   currentTheme = themeId;
   localStorage.setItem(STORAGE_KEYS.theme, themeId);
   queueSaveUserPreferences();
+}
+
+function getThemeSwatches(themeId) {
+  const paletteMap = {
+    citrus: ['#ef6c57', '#ffb703', '#5bb9a8', '#fff6ef'],
+    garden: ['#21a37b', '#7dcf8c', '#89d5c4', '#f1fbf6'],
+    berry: ['#d94f87', '#ff9f68', '#7d5cff', '#fff2f7'],
+    farmhouse: ['#b56f4d', '#d2a768', '#91b39d', '#fbf4e9'],
+    diner: ['#ff5e6c', '#2fc4b2', '#5b7cfa', '#f6fffd'],
+    lemon: ['#9ab63a', '#f2c94c', '#79a8d8', '#fffbe8'],
+    copper: ['#c97745', '#e0b05d', '#7bb0aa', '#1d1d20'],
+    midnight: ['#ff7f66', '#ffcd57', '#68d2bf', '#151827'],
+  };
+  return paletteMap[themeId] || paletteMap.citrus;
 }
 
 function renderAll() {
@@ -1757,7 +1775,15 @@ function renderSettingsForm() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `theme-btn${theme.id === currentTheme ? ' active' : ''}`;
-      btn.textContent = theme.name;
+      btn.innerHTML = `
+        <span class="theme-name">${escapeHtml(theme.name)}</span>
+        <span class="theme-swatches" aria-hidden="true">
+          <span style="background:${getThemeSwatches(theme.id)[0]}"></span>
+          <span style="background:${getThemeSwatches(theme.id)[1]}"></span>
+          <span style="background:${getThemeSwatches(theme.id)[2]}"></span>
+          <span style="background:${getThemeSwatches(theme.id)[3]}"></span>
+        </span>
+      `;
       btn.addEventListener('click', () => {
         applyTheme(theme.id);
         renderSettingsForm();

@@ -17,6 +17,22 @@
       "name": "Berry Bright"
     },
     {
+      "id": "farmhouse",
+      "name": "Farmhouse"
+    },
+    {
+      "id": "diner",
+      "name": "Retro Diner"
+    },
+    {
+      "id": "lemon",
+      "name": "Lemon Kitchen"
+    },
+    {
+      "id": "copper",
+      "name": "Slate & Copper"
+    },
+    {
       "id": "midnight",
       "name": "Midnight Kitchen"
     }
