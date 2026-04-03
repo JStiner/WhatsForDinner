@@ -269,21 +269,12 @@ function bindStaticEvents() {
     btn.addEventListener('click', () => setRecipeModalTab(btn.dataset.tab));
   });
 
-  document.querySelectorAll('.settings-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => setSettingsTab(btn.dataset.settingsTab));
-  });
 
   document.querySelectorAll('[data-toggle-section]').forEach(btn => {
     btn.addEventListener('click', () => toggleSection(btn.dataset.toggleSection));
   });
 
   document.addEventListener('click', (event) => {
-    const settingsBtn = event.target.closest('.settings-nav-btn');
-    if (settingsBtn) {
-      setSettingsTab(settingsBtn.dataset.settingsTab);
-      return;
-    }
-
     const addBtn = event.target.closest('[data-add-ingredient]');
     if (addBtn) {
       addIngredient(addBtn.dataset.addIngredient);
@@ -1859,6 +1850,19 @@ function closeSettingsModal() {
   el.settingsModal.setAttribute('aria-hidden', 'true');
 }
 
+function bindSettingsNav() {
+  const navRoot = document.querySelector('.settings-nav');
+  if (!navRoot || navRoot.dataset.bound === 'true') return;
+  navRoot.dataset.bound = 'true';
+  navRoot.addEventListener('click', event => {
+    const btn = event.target.closest('.settings-nav-btn');
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSettingsTab(btn.dataset.settingsTab);
+  });
+}
+
 function setSettingsTab(tabName) {
   currentSettingsTab = tabName || 'general';
   document.querySelectorAll('.settings-nav-btn').forEach(btn => {
@@ -1897,6 +1901,7 @@ function renderSettingsForm() {
   }
 
   renderSettingsCategoryPages();
+  bindSettingsNav();
 }
 
 function renderSettingsCategoryPages() {

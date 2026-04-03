@@ -301,8 +301,8 @@ input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px;
 #recipes-section.collapsed .panel-head::before { content: 'Recipes'; writing-mode: vertical-rl; transform: rotate(180deg); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; font-weight: 800; color: var(--accent); }
 #recipes-section.collapsed .panel-head-actions { margin: 0; width: auto; }
 #recipes-section.collapsed .collapse-toggle { margin: 0; }
-.settings-nav { display: flex; gap: 10px; flex-wrap: wrap; }
-.settings-nav-dynamic { display: contents; }
+.settings-nav { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.settings-nav-dynamic { display: flex; gap: 10px; flex-wrap: wrap; }
 .settings-page { display: none; }
 .settings-page.active { display: grid; }
 #ingredient-categories { display: grid; gap: 14px; }
