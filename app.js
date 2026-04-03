@@ -13,9 +13,9 @@ const PAGE_SIZE = 12;
 const MAX_PANTRY_COUNT = 12;
 
 const BASE_CATEGORY_DEFAULTS = {
-  spices: true,
-  sauces: true,
-  pantry: true,
+  spices: false,
+  sauces: false,
+  pantry: false,
   bakery: false,
   dairy: false,
   meats: false,
