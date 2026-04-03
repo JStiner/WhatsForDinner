@@ -9,7 +9,8 @@ const STORAGE_KEYS = {
   stockOverrides: 'wfd-stock-overrides-v1',
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12;
+const MAX_PANTRY_COUNT = 12;
 
 const BASE_CATEGORY_DEFAULTS = {
   spices: true,
@@ -610,27 +611,31 @@ function deriveGroceryItemsFromLines(lines, ingredientNames) {
   });
 }
 
+
+function normalizeRecipeItemUnit(name, unit) {
+  const normalized = normalizeUnit(unit || '');
+  const label = normalizeIngredient(name);
+  if (label.includes('egg') && (!normalized || normalized === 'cup')) return 'count';
+  return normalized;
+}
+
 function normalizeGroceryItem(item, ingredientNames, recipe, index) {
   if (!item) return null;
 
-  const quantity = Number(item.quantity);
-  const unit = normalizeUnit(item.unit || '');
-  const name = String(item.name || item.display || '').trim();
-  const inferredPantryKey = item.pantryKey
-    ? normalizeIngredient(item.pantryKey)
-    : inferPantryKey(name, ingredientNames);
-  const pantryKey = inferredPantryKey || inferFallbackPantryKey(name);
-  const trackPantry = Boolean(pantryKey) && Number.isFinite(quantity);
-
-  if (item.display && (!Number.isFinite(quantity) || !name)) {
+  if (item.display && (item.quantity == null || !item.name)) {
     return {
       id: `${recipe.id}-display-${index}`,
       kind: 'display',
       display: item.display,
-      pantryKey,
       trackPantry: false,
     };
   }
+
+  const quantity = Number(item.quantity);
+  const name = String(item.name || item.display || '').trim();
+  const unit = normalizeRecipeItemUnit(name, item.unit || '');
+  const pantryKey = item.pantryKey ? normalizeIngredient(item.pantryKey) : inferPantryKey(name, ingredientNames);
+  const trackPantry = Boolean(pantryKey) && Number.isFinite(quantity);
 
   return {
     id: `${recipe.id}-${index}-${slugify(name || item.display || 'item')}`,
@@ -720,22 +725,6 @@ function scoreCandidateMatch(text, candidate) {
   if (!overlap.length) return 0;
 
   return overlap.length * 10 + (overlap.join(' ').length / Math.max(candidate.length, 1));
-}
-
-function inferFallbackPantryKey(text) {
-  const simplified = simplifyIngredientName(text);
-  return normalizeIngredient(simplified);
-}
-
-function simplifyIngredientName(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/,.*$/g, ' ')
-    .replace(/\b(to taste|as needed|for serving|for garnish|divided|optional)\b/g, ' ')
-    .replace(/\b(chopped|diced|sliced|minced|beaten|softened|melted|shredded|grated|crumbled|peeled|cooked|uncooked|drained|rinsed|halved|quartered)\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function enrichIngredientProfiles() {
@@ -1038,15 +1027,50 @@ function renderChipGroup(category, container) {
     btn.textContent = qty > 0 ? `${item.name} (${formatAmount(qty)}${unitHint})` : `${item.name}${unitHint}`;
 
     btn.addEventListener('click', () => {
-      const nextQty = qty >= 9 ? 0 : qty + 1;
-      if (nextQty === 0) delete pantryCounts[key];
-      else pantryCounts[key] = nextQty;
+      const nextQty = Math.min(MAX_PANTRY_COUNT, qty + 1);
+      pantryCounts[key] = nextQty;
       persistPantry();
       currentPage = 1;
       renderAll();
     });
 
     return btn;
+  };
+
+  const createPantryControl = (item) => {
+    const key = normalizeIngredient(item.name);
+    const qty = pantryCounts[key] || 0;
+    const unitHint = item.pantryUnit ? ` • ${item.pantryUnit}` : '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pantry-control';
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = `chip pantry-add${qty > 0 ? ' active' : ''}`;
+    addBtn.textContent = qty > 0 ? `${item.name} (${formatAmount(qty)}${unitHint})` : `${item.name}${unitHint}`;
+    addBtn.addEventListener('click', () => {
+      const nextQty = Math.min(MAX_PANTRY_COUNT, qty + 1);
+      pantryCounts[key] = nextQty;
+      persistPantry();
+      currentPage = 1;
+      renderAll();
+    });
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'chip pantry-reset';
+    resetBtn.textContent = 'Delete';
+    resetBtn.setAttribute('aria-label', `Reset ${item.name} to zero`);
+    resetBtn.addEventListener('click', () => {
+      delete pantryCounts[key];
+      persistPantry();
+      currentPage = 1;
+      renderAll();
+    });
+
+    wrap.append(addBtn, resetBtn);
+    return wrap;
   };
 
   const appendGroup = (label, groupItems, extraClass = '') => {
@@ -1062,7 +1086,7 @@ function renderChipGroup(category, container) {
 
     const groupGrid = document.createElement('div');
     groupGrid.className = 'chip-grid ingredient-chip-grid';
-    groupItems.forEach(item => groupGrid.appendChild(createChipButton(item)));
+    groupItems.forEach(item => groupGrid.appendChild(createPantryControl(item)));
     group.appendChild(groupGrid);
 
     container.appendChild(group);
@@ -1364,10 +1388,7 @@ function renderRecipeModal() {
  const list = document.createElement('ul');
 list.className = 'action-ingredients-list';
 
-const modalItems =
-  (activeRecipe.groceryItems || []).some(item => item.trackPantry)
-    ? (activeRecipe.groceryItems || [])
-    : (activeRecipe.pantryTrackableItems || []);
+const modalItems = mergeRecipeModalItems(activeRecipe);
 
 modalItems.forEach((itemDef) => {
   const shortage = itemDef.trackPantry ? getItemShortage(itemDef, scale) : null;
@@ -1410,6 +1431,38 @@ modalItems.forEach((itemDef) => {
   });
   el.tabDirections.innerHTML = '';
   el.tabDirections.appendChild(directionsList);
+}
+
+
+function mergeRecipeModalItems(recipe) {
+  const merged = new Map();
+  const items = [...(recipe?.groceryItems || []), ...(recipe?.pantryTrackableItems || [])];
+
+  items.forEach((item, index) => {
+    if (!item) return;
+    const baseKey = item.trackPantry
+      ? `track:${normalizeIngredient(item.pantryKey || item.name)}`
+      : `display:${normalizeIngredient(item.name || item.display || String(index))}`;
+
+    if (!merged.has(baseKey)) {
+      merged.set(baseKey, { ...item });
+      return;
+    }
+
+    const existing = merged.get(baseKey);
+    merged.set(baseKey, {
+      ...existing,
+      ...item,
+      display: existing.display || item.display,
+      name: existing.name || item.name,
+      pantryKey: existing.pantryKey || item.pantryKey,
+      quantity: existing.quantity ?? item.quantity,
+      unit: existing.unit || item.unit,
+      trackPantry: Boolean(existing.trackPantry || item.trackPantry),
+    });
+  });
+
+  return [...merged.values()];
 }
 
 function getItemShortage(item, scale = 1, remainingPool = null) {
