@@ -1898,8 +1898,49 @@ function renderSettingsForm() {
       });
       el.themeOptions.appendChild(btn);
     });
+	
   }
+const existingSectionDefaults = document.getElementById('section-defaults-wrap');
+if (existingSectionDefaults) existingSectionDefaults.remove();
 
+const sectionDefaultsWrap = document.createElement('div');
+sectionDefaultsWrap.id = 'section-defaults-wrap';
+sectionDefaultsWrap.className = 'settings-section';
+sectionDefaultsWrap.innerHTML = `
+  <h3>Default Section Layout</h3>
+  <p class="settings-help">Control which sections are collapsed by default.</p>
+`;
+
+const sections = [
+  { key: 'recipes', label: 'Recipe List' },
+  { key: 'ingredients', label: 'Ingredients' },
+  { key: 'shopping', label: 'Grocery List' },
+  { key: 'meal-plan', label: 'Meal Plan' },
+];
+
+sections.forEach(sec => {
+  const row = document.createElement('label');
+  row.className = 'settings-help';
+  row.style.display = 'block';
+  row.style.marginBottom = '6px';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = Boolean(sectionState[sec.key]);
+  checkbox.style.marginRight = '8px';
+
+  checkbox.addEventListener('change', () => {
+    sectionState[sec.key] = checkbox.checked;
+    persistSectionState();
+    renderSectionState();
+  });
+
+  row.appendChild(checkbox);
+  row.append(`Collapse ${sec.label}`);
+  sectionDefaultsWrap.appendChild(row);
+});
+
+el.themeOptions?.parentElement?.appendChild(sectionDefaultsWrap);
   renderSettingsCategoryPages();
   bindSettingsNav();
 }
@@ -2146,6 +2187,7 @@ function resetSettings() {
   localStorage.removeItem(STORAGE_KEYS.mealPlan);
   localStorage.removeItem(STORAGE_KEYS.stockDefaults);
   localStorage.removeItem(STORAGE_KEYS.stockOverrides);
+  localStorage.removeItem(STORAGE_KEYS.mobileSectionDefaultsApplied);
 
   categoryStockDefaults = { ...BASE_CATEGORY_DEFAULTS };
   ingredientStockOverrides = {};
@@ -2208,6 +2250,26 @@ async function applyAuthSession(session) {
   }
 
   pantryCounts = applyStockDefaults(pantryCounts, siteConfig.ingredients);
+  // Apply mobile defaults for logged-in users
+	if (currentUser && window.innerWidth <= 768) {
+	  const mobileDefaultsApplied = localStorage.getItem(STORAGE_KEYS.mobileSectionDefaultsApplied) === 'true';
+
+	  if (!mobileDefaultsApplied) {
+		const mobileDefaults = {
+		  recipes: true,
+		  ingredients: false,
+		  shopping: true,
+		  'meal-plan': true,
+		};
+
+		Object.entries(mobileDefaults).forEach(([key, val]) => {
+		  sectionState[key] = val;
+		});
+
+		persistSectionState();
+		localStorage.setItem(STORAGE_KEYS.mobileSectionDefaultsApplied, 'true');
+	  }
+	}
   refreshAuthUi();
   renderAll();
 }
