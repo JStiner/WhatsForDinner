@@ -613,20 +613,24 @@ function deriveGroceryItemsFromLines(lines, ingredientNames) {
 function normalizeGroceryItem(item, ingredientNames, recipe, index) {
   if (!item) return null;
 
-  if (item.display && (item.quantity == null || !item.name)) {
+  const quantity = Number(item.quantity);
+  const unit = normalizeUnit(item.unit || '');
+  const name = String(item.name || item.display || '').trim();
+  const inferredPantryKey = item.pantryKey
+    ? normalizeIngredient(item.pantryKey)
+    : inferPantryKey(name, ingredientNames);
+  const pantryKey = inferredPantryKey || inferFallbackPantryKey(name);
+  const trackPantry = Boolean(pantryKey) && Number.isFinite(quantity);
+
+  if (item.display && (!Number.isFinite(quantity) || !name)) {
     return {
       id: `${recipe.id}-display-${index}`,
       kind: 'display',
       display: item.display,
+      pantryKey,
       trackPantry: false,
     };
   }
-
-  const quantity = Number(item.quantity);
-  const unit = normalizeUnit(item.unit || '');
-  const name = String(item.name || item.display || '').trim();
-  const pantryKey = item.pantryKey ? normalizeIngredient(item.pantryKey) : inferPantryKey(name, ingredientNames);
-  const trackPantry = Boolean(pantryKey) && Number.isFinite(quantity);
 
   return {
     id: `${recipe.id}-${index}-${slugify(name || item.display || 'item')}`,
@@ -716,6 +720,22 @@ function scoreCandidateMatch(text, candidate) {
   if (!overlap.length) return 0;
 
   return overlap.length * 10 + (overlap.join(' ').length / Math.max(candidate.length, 1));
+}
+
+function inferFallbackPantryKey(text) {
+  const simplified = simplifyIngredientName(text);
+  return normalizeIngredient(simplified);
+}
+
+function simplifyIngredientName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/,.*$/g, ' ')
+    .replace(/\b(to taste|as needed|for serving|for garnish|divided|optional)\b/g, ' ')
+    .replace(/\b(chopped|diced|sliced|minced|beaten|softened|melted|shredded|grated|crumbled|peeled|cooked|uncooked|drained|rinsed|halved|quartered)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function enrichIngredientProfiles() {
