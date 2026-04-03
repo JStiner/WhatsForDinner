@@ -1037,39 +1037,43 @@ function renderChipGroup(category, container) {
     return btn;
   };
 
-  const createPantryControl = (item) => {
+  const createPantryControl = (item, { showReset = false } = {}) => {
     const key = normalizeIngredient(item.name);
     const qty = pantryCounts[key] || 0;
     const unitHint = item.pantryUnit ? ` • ${item.pantryUnit}` : '';
 
     const wrap = document.createElement('div');
-    wrap.className = 'pantry-control';
+    wrap.className = `pantry-control${showReset ? ' has-reset' : ''}`;
 
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = `chip pantry-add${qty > 0 ? ' active' : ''}`;
     addBtn.textContent = qty > 0 ? `${item.name} (${formatAmount(qty)}${unitHint})` : `${item.name}${unitHint}`;
     addBtn.addEventListener('click', () => {
-      const nextQty = Math.min(MAX_PANTRY_COUNT, qty + 1);
+      const nextQty = qty >= MAX_PANTRY_COUNT ? 1 : qty + 1;
       pantryCounts[key] = nextQty;
       persistPantry();
       currentPage = 1;
       renderAll();
     });
 
-    const resetBtn = document.createElement('button');
-    resetBtn.type = 'button';
-    resetBtn.className = 'chip pantry-reset';
-    resetBtn.textContent = 'Delete';
-    resetBtn.setAttribute('aria-label', `Reset ${item.name} to zero`);
-    resetBtn.addEventListener('click', () => {
-      delete pantryCounts[key];
-      persistPantry();
-      currentPage = 1;
-      renderAll();
-    });
+    wrap.appendChild(addBtn);
 
-    wrap.append(addBtn, resetBtn);
+    if (showReset) {
+      const resetBtn = document.createElement('button');
+      resetBtn.type = 'button';
+      resetBtn.className = 'chip pantry-reset';
+      resetBtn.textContent = 'Delete';
+      resetBtn.setAttribute('aria-label', `Reset ${item.name} to zero`);
+      resetBtn.addEventListener('click', () => {
+        delete pantryCounts[key];
+        persistPantry();
+        currentPage = 1;
+        renderAll();
+      });
+      wrap.appendChild(resetBtn);
+    }
+
     return wrap;
   };
 
@@ -1086,7 +1090,8 @@ function renderChipGroup(category, container) {
 
     const groupGrid = document.createElement('div');
     groupGrid.className = 'chip-grid ingredient-chip-grid';
-    groupItems.forEach(item => groupGrid.appendChild(createPantryControl(item)));
+    const showReset = label.toLowerCase() === 'have';
+    groupItems.forEach(item => groupGrid.appendChild(createPantryControl(item, { showReset })));
     group.appendChild(groupGrid);
 
     container.appendChild(group);
@@ -1440,9 +1445,9 @@ function mergeRecipeModalItems(recipe) {
 
   items.forEach((item, index) => {
     if (!item) return;
-    const baseKey = item.trackPantry
-      ? `track:${normalizeIngredient(item.pantryKey || item.name)}`
-      : `display:${normalizeIngredient(item.name || item.display || String(index))}`;
+
+    const normalizedName = normalizeIngredient(item.pantryKey || item.name || item.display || String(index));
+    const baseKey = normalizedName || (item.trackPantry ? `track:${index}` : `display:${index}`);
 
     if (!merged.has(baseKey)) {
       merged.set(baseKey, { ...item });
@@ -1450,19 +1455,22 @@ function mergeRecipeModalItems(recipe) {
     }
 
     const existing = merged.get(baseKey);
+    const preferTrackPantry = item.trackPantry && !existing.trackPantry;
+
     merged.set(baseKey, {
+      ...(preferTrackPantry ? item : existing),
       ...existing,
       ...item,
-      display: existing.display || item.display,
+      display: existing.trackPantry ? existing.display : (item.display || existing.display),
       name: existing.name || item.name,
-      pantryKey: existing.pantryKey || item.pantryKey,
+      pantryKey: existing.pantryKey || item.pantryKey || normalizedName,
       quantity: existing.quantity ?? item.quantity,
       unit: existing.unit || item.unit,
       trackPantry: Boolean(existing.trackPantry || item.trackPantry),
     });
   });
 
-  return [...merged.values()];
+  return [...merged.values()].filter(item => item.trackPantry || item.display || item.name);
 }
 
 function getItemShortage(item, scale = 1, remainingPool = null) {
